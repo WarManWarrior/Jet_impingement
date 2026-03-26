@@ -72,12 +72,13 @@ class ThermalDataset(Dataset):
             # Load Targets (Outputs)
             temp = torch.tensor(grp["Temperature"][:], dtype=torch.float32).view(-1, 1)
             pressure = torch.tensor(grp["Pressure"][:], dtype=torch.float32).view(-1, 1)
+            v_mag = torch.tensor(grp["V_mag"][:], dtype=torch.float32).view(-1, 1)
             
         num_nodes = coords.shape[0]
         
         # Boundary / Global Parameters
-        global_params = parse_simulation_params(filepath)
-        global_tensor = torch.tensor(global_params, dtype=torch.float32).repeat(num_nodes, 1)
+        vel_norm, power_norm = parse_simulation_params(self.file_list[idx])
+        global_tensor = torch.tensor([vel_norm, vel_norm**2, power_norm], dtype=torch.float32).repeat(num_nodes, 1)
         
         # Engineered Geometric Features (Physics Boundary Markers)
         # 1. Distance to geometric center (Proxy for jet core radial distance)
@@ -92,11 +93,11 @@ class ThermalDataset(Dataset):
             (coords[:, 2] <= coords[:, 2].min() + eps) | (coords[:, 2] >= coords[:, 2].max() - eps)
         ).float().view(-1, 1)
         
-        # Compile final feature matrix X (Dim = 3 (coords) + 1 (dist) + 1 (bound) + 2 (global) = 7)
+        # Compile final feature matrix X (Dim = 3 (coords) + 1 (dist) + 1 (bound) + 3 (global) = 8)
         x = torch.cat([coords, dist_to_center, boundary_flag, global_tensor], dim=1)
         
-        # Compile target matrix Y (Dim = 2)
-        y = torch.cat([temp, pressure], dim=1)
+        # Compile target matrix Y (Dim = 3)
+        y = torch.cat([temp, pressure, v_mag], dim=1)
         
         # Graph Construction
         edge_index = knn_graph(coords, k=self.k_neighbors, loop=False)
@@ -132,6 +133,31 @@ class StandardScaler:
     def inverse_transform(self, tensor):
         return (tensor * self.std.to(tensor.device)) + self.mean.to(tensor.device)
 
+class MinMaxScaler:
+    """Custom tensor-compatible MinMaxScaler — preserves peaks unlike StandardScaler."""
+    def __init__(self):
+        self.min_val = None
+        self.range_val = None
+
+    def fit(self, tensor_list):
+        all_data = torch.cat(tensor_list, dim=0)
+        self.min_val = all_data.min(dim=0).values
+        self.range_val = all_data.max(dim=0).values - self.min_val
+        self.range_val[self.range_val == 0] = 1.0
+        
+        # Debug scaling ranges
+        print(f"Scaler Debug -> Temp Range:   min={self.min_val[0].item():.2f}, range={self.range_val[0].item():.2f}")
+        print(f"Scaler Debug -> Press Range:  min={self.min_val[1].item():.2f}, range={self.range_val[1].item():.2f}")
+        print(f"Scaler Debug -> Vel Range:    min={self.min_val[2].item():.2f}, range={self.range_val[2].item():.2f}")
+
+    def transform(self, tensor):
+        return (tensor - self.min_val.to(tensor.device)) / self.range_val.to(tensor.device)
+
+    def inverse_transform(self, tensor):
+        return (tensor * self.range_val.to(tensor.device)) + self.min_val.to(tensor.device)
+
+
+
 # =============================================================================
 # 3. Model Architecture (Edge-Aware NNConv)
 # =============================================================================
@@ -144,7 +170,7 @@ class ThermalGNN(nn.Module):
         """
         super().__init__()
         
-        # Edge parameter parsing mappings
+        # Edge-Conditioned ResNet Arrays (Expanded to 4 Layers)
         self.edge_mlp1 = nn.Sequential(
             nn.Linear(edge_dim, 32),
             nn.ReLU(),
@@ -160,30 +186,36 @@ class ThermalGNN(nn.Module):
             nn.ReLU(),
             nn.Linear(32, hidden * hidden)
         )
+        self.edge_mlp4 = nn.Sequential(
+            nn.Linear(edge_dim, 32),
+            nn.ReLU(),
+            nn.Linear(32, hidden * hidden)
+        )
 
         self.conv1 = NNConv(in_channels, hidden, self.edge_mlp1, aggr='mean')
         self.conv2 = NNConv(hidden, hidden, self.edge_mlp2, aggr='mean')
         self.conv3 = NNConv(hidden, hidden, self.edge_mlp3, aggr='mean')
+        self.conv4 = NNConv(hidden, hidden, self.edge_mlp4, aggr='mean')
 
-        self.lin = nn.Linear(hidden, 2)
+        self.lin = nn.Linear(hidden, 3)
 
     def forward(self, x, edge_index, edge_attr):
-        x = torch.relu(self.conv1(x, edge_index, edge_attr))
-        x = torch.relu(self.conv2(x, edge_index, edge_attr))
-        x = torch.relu(self.conv3(x, edge_index, edge_attr))
-        return self.lin(x)
+        x1 = torch.relu(self.conv1(x, edge_index, edge_attr))
+        x2 = torch.relu(self.conv2(x1, edge_index, edge_attr)) + x1 # Explicit Residual Hop
+        x3 = torch.relu(self.conv3(x2, edge_index, edge_attr)) + x2
+        x4 = torch.relu(self.conv4(x3, edge_index, edge_attr)) + x3
+        return self.lin(x4)
 
 # =============================================================================
-# 4. Training Engine & Physics Constraints
+# 4. Training Engine
 # =============================================================================
 
-def smoothness_loss(predictions, edge_index):
-    """L_smooth = Σ ||T_i - T_j|| over connected edges"""
+def laplacian_loss(pred, edge_index):
+    """Simple correct Laplacian: mean((pred[row] - pred[col])^2). No edge_attr needed."""
     row, col = edge_index
-    diff = predictions[row] - predictions[col]
-    return torch.mean(diff ** 2)
+    return torch.mean((pred[row] - pred[col]) ** 2)
 
-def train_thermal_surrogate(data_dir, epochs=100, batch_size=1, hidden_dim=32, lr=1e-3, lambda_smooth=0.1):
+def train_thermal_surrogate(data_dir, epochs=30, batch_size=1, hidden_dim=64, lr=1e-4, lambda_lap=0.0):
     print(f"\n🚀 Initializing Generalizable Physics-Aware GNN Surrogate")
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -229,7 +261,7 @@ def train_thermal_surrogate(data_dir, epochs=100, batch_size=1, hidden_dim=32, l
     # 2. Dataset Normalizer Scaling Fitting
     print("\nFitting Normalizers Exclusively on Training Arrays...")
     x_scaler = StandardScaler()
-    y_scaler = StandardScaler()
+    y_scaler = MinMaxScaler()
     
     train_x_tensors = []
     train_y_tensors = []
@@ -246,10 +278,10 @@ def train_thermal_surrogate(data_dir, epochs=100, batch_size=1, hidden_dim=32, l
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
-    assert train_dataset[0].x.shape[1] == 7, f"CRITICAL DIM MAPPING ERROR: X Tensor Shape={train_dataset[0].x.shape}"
+    assert train_dataset[0].x.shape[1] == 8, f"CRITICAL DIM MAPPING ERROR: X Tensor Shape={train_dataset[0].x.shape}"
     
-    # 3. Model Initialization (In: 3 coords + 2 bounds + 2 global = 7 | Edge: 4 | Out: 2)
-    model = ThermalGNN(in_channels=7, edge_dim=4, hidden=hidden_dim).to(device)
+    # 3. Model Initialization (In: 3 coords + 1 bounds + 1 dist + 2 global + 1 vol**2 = 8 | Edge: 4 | Out: 3)
+    model = ThermalGNN(in_channels=8, edge_dim=4, hidden=hidden_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.MSELoss()
     
@@ -261,6 +293,7 @@ def train_thermal_surrogate(data_dir, epochs=100, batch_size=1, hidden_dim=32, l
     for epoch in range(epochs):
         model.train()
         total_loss = 0.0
+        epoch_loss_t, epoch_loss_p, epoch_loss_v = 0.0, 0.0, 0.0
         
         start_time = time.time()
         
@@ -268,28 +301,36 @@ def train_thermal_surrogate(data_dir, epochs=100, batch_size=1, hidden_dim=32, l
             batch = batch.to(device)
             optimizer.zero_grad()
             
-            # Apply strict mathematical normalization (Scale down)
             x_norm = x_scaler.transform(batch.x)
             y_norm = y_scaler.transform(batch.y)
             
             with autocast('cuda'):
-                # Formulate Predictions
                 pred = model(x_norm, batch.edge_index, batch.edge_attr)
                 
-                # Target Separation
-                t_pred, p_pred = pred[:, 0:1], pred[:, 1:2]
-                t_true, p_true = y_norm[:, 0:1], y_norm[:, 1:2]
+                t_pred, p_pred, v_pred = pred[:, 0:1], pred[:, 1:2], pred[:, 2:3]
+                t_true, p_true, v_true = y_norm[:, 0:1], y_norm[:, 1:2], y_norm[:, 2:3]
                 
-                # Fundamental Data Loss Framework
-                loss_data = criterion(t_pred, t_true) + criterion(p_pred, p_true)
+                # Pure data loss — NO physics (Phase 1)
+                loss_t = criterion(t_pred, t_true)
+                loss_p = criterion(p_pred, p_true)
+                loss_v = criterion(v_pred, v_true)
+                # FIX 1: Weight imbalance (3.0 for Temp)
+                loss_data = (
+                    loss_t / (t_true.std() + 1e-6) +
+                    loss_p / (p_true.std() + 1e-6) +
+                    loss_v / (v_true.std() + 1e-6)
+                )
                 
-                # Advanced Laplacian Smoothness Constraints mapped mathematically identically across the Graph Edge topology
-                loss_smooth_t = smoothness_loss(t_pred, batch.edge_index)
-                loss_smooth_p = smoothness_loss(p_pred, batch.edge_index)
-                loss_smooth = loss_smooth_t + loss_smooth_p
+                # FIX 3: Boost Temperature Learning Signal and FIX 4: Lap ONLY for Temp
+                if lambda_lap > 0:
+                    loss_lap = laplacian_loss(t_pred, batch.edge_index)
+                    loss = loss_data + 0.5 * loss_t + lambda_lap * loss_lap
+                else:
+                    loss = loss_data + 0.5 * loss_t
                 
-                # Full Convergent Aggregation
-                loss = loss_data + (lambda_smooth * loss_smooth)
+                epoch_loss_t += loss_t.item()
+                epoch_loss_p += loss_p.item()
+                epoch_loss_v += loss_v.item()
             
             scaler_amp.scale(loss).backward()
             scaler_amp.step(optimizer)
@@ -299,7 +340,7 @@ def train_thermal_surrogate(data_dir, epochs=100, batch_size=1, hidden_dim=32, l
             
         epoch_time = time.time() - start_time
         
-        # Compute Validation Bounds 
+        # Validation + Debug Stats
         if (epoch + 1) % 5 == 0 or epoch == 0:
             model.eval()
             val_loss = 0.0
@@ -311,20 +352,36 @@ def train_thermal_surrogate(data_dir, epochs=100, batch_size=1, hidden_dim=32, l
                     
                     with autocast('cuda'):
                         v_pred = model(v_x_norm, v_batch.edge_index, v_batch.edge_attr)
-                        vt_p, vp_p = v_pred[:, 0:1], v_pred[:, 1:2]
-                        vt_t, vp_t = v_y_norm[:, 0:1], v_y_norm[:, 1:2]
+                        vt_p, vp_p, vv_p = v_pred[:, 0:1], v_pred[:, 1:2], v_pred[:, 2:3]
+                        vt_t, vp_t, vv_t = v_y_norm[:, 0:1], v_y_norm[:, 1:2], v_y_norm[:, 2:3]
                         
-                        val_data_loss = criterion(vt_p, vt_t) + criterion(vp_p, vp_t)
-                        val_smooth_t = smoothness_loss(vt_p, v_batch.edge_index)
-                        val_smooth_p = smoothness_loss(vp_p, v_batch.edge_index)
-                        val_smooth_loss = val_smooth_t + val_smooth_p
-                        
-                        val_loss += (val_data_loss + lambda_smooth * val_smooth_loss).item()
+                        val_loss += (criterion(vt_p, vt_t) + criterion(vp_p, vp_t) + criterion(vv_p, vv_t)).item()
                     
+            n_batches = len(train_loader)
             print(f"Epoch [{epoch+1:03d}/{epochs}] | "
-                  f"Train Loss: {total_loss/len(train_loader):.4f} | "
-                  f"Val Loss: {val_loss/len(val_loader):.4f} | "
+                  f"Train: {total_loss/n_batches:.4f} | "
+                  f"Val: {val_loss/len(val_loader):.4f} | "
+                  f"T: {epoch_loss_t/n_batches:.4f} | "
+                  f"P: {epoch_loss_p/n_batches:.4f} | "
+                  f"V: {epoch_loss_v/n_batches:.4f} | "
                   f"Time: {epoch_time:.2f}s")
+            
+            # Phase 2 Debug: Pred vs GT range check (denormalized)
+            with torch.no_grad():
+                sample = train_dataset[0]
+                s_x = x_scaler.transform(sample.x.unsqueeze(0) if sample.x.dim() == 1 else sample.x).to(device)
+                s_ei = sample.edge_index.to(device)
+                s_ea = sample.edge_attr.to(device)
+                s_pred_norm = model(s_x, s_ei, s_ea)
+                s_pred = y_scaler.inverse_transform(s_pred_norm).cpu()
+                s_true = sample.y
+                
+                print(f"  Pred stats -> T:[{s_pred[:,0].min():.1f}, {s_pred[:,0].max():.1f}]  "
+                      f"P:[{s_pred[:,1].min():.1f}, {s_pred[:,1].max():.1f}]  "
+                      f"V:[{s_pred[:,2].min():.1f}, {s_pred[:,2].max():.1f}]")
+                print(f"  GT   stats -> T:[{s_true[:,0].min():.1f}, {s_true[:,0].max():.1f}]  "
+                      f"P:[{s_true[:,1].min():.1f}, {s_true[:,1].max():.1f}]  "
+                      f"V:[{s_true[:,2].min():.1f}, {s_true[:,2].max():.1f}]")
             
     print("\nPhase Complete. Surrogate Operator trained successfully.")
     
@@ -333,8 +390,8 @@ def train_thermal_surrogate(data_dir, epochs=100, batch_size=1, hidden_dim=32, l
         'model_state': model.state_dict(),
         'x_mean': x_scaler.mean,
         'x_std': x_scaler.std,
-        'y_mean': y_scaler.mean,
-        'y_std': y_scaler.std
+        'y_min': y_scaler.min_val,
+        'y_range': y_scaler.range_val
     }, "thermal_gnn.pth")
     print("Model physics parameters and scalers strictly written to 'thermal_gnn.pth'.")
     
@@ -371,13 +428,13 @@ def execute_thermal_inference(model, x_scaler, y_scaler, base_graph_path, veloci
         (coords[:, 2] <= coords[:, 2].min() + eps) | (coords[:, 2] >= coords[:, 2].max() - eps)
     ).float().view(-1, 1)
     
-    # 3. Global Constraint Generation
+    # 3. Global Constraint Generation (must match training: vel, vel**2, power)
     vel_norm = (velocity - 3.0) / 7.0
     pow_norm = (power - 40.0) / 40.0
-    globals_tensor = torch.tensor([vel_norm, pow_norm], dtype=torch.float32).repeat(coords.shape[0], 1)
+    globals_tensor = torch.tensor([vel_norm, vel_norm**2, pow_norm], dtype=torch.float32).repeat(coords.shape[0], 1)
     
-    # Spatial Graph Extractor
-    edge_index = knn_graph(coords, k=12, loop=False)
+    # Spatial Graph Extractor (k=6 matching training topology)
+    edge_index = knn_graph(coords, k=6, loop=False)
     row, col = edge_index
     displacements = coords[row] - coords[col]
     distances = torch.norm(displacements, p=2, dim=1).view(-1, 1)
@@ -393,12 +450,15 @@ def execute_thermal_inference(model, x_scaler, y_scaler, base_graph_path, veloci
         
     # 5. Inverse Denormalization Space Mapping
     final_output = y_scaler.inverse_transform(pred_norm).cpu()
-    return final_output[:, 0:1], final_output[:, 1:2]  # T, P
+    return final_output[:, 0:1], final_output[:, 1:2], final_output[:, 2:3]  # T, P, V_mag
 
 if __name__ == "__main__":
     DATA_PATH = r"D:\data\JET\H4_reduced\Training_Clustered_20K"
+    # Phase 1: Train data-only (lambda_lap=0.0)
+    # Phase 5: After verifying, set lambda_lap=0.1 for simple Laplacian on T
     train_thermal_surrogate(
         data_dir=DATA_PATH,
-        epochs=100,
-        batch_size=1
+        epochs=30,
+        batch_size=1,
+        lambda_lap=0.0  # PHASE 1: data only — set to 0.1 after verification
     )
