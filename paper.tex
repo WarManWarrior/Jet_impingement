@@ -1,0 +1,128 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\begin{document}
+
+\title{Real-Time Thermal Prediction Framework for Single Cylindrical Jet Impingement Cooling: A Machine Learning Surrogate Approach}
+
+\author{
+\IEEEauthorblockN{
+Sudeep Kumar\IEEEauthorrefmark{1}, 
+Satyam Kumar Choudhary\IEEEauthorrefmark{1}, 
+Siddheshwar Dubey\IEEEauthorrefmark{1}, \\
+Dr. A. Alice Nithya\IEEEauthorrefmark{1} (Guide), 
+Dr. Anusuya K\IEEEauthorrefmark{2} (Co-Guide), \\
+Dr. Gnanavel B K\IEEEauthorrefmark{2} (Mentor), 
+Kishan Awadhesh Singh\IEEEauthorrefmark{3} (Mentor)
+}
+\IEEEauthorblockA{\IEEEauthorrefmark{1}Department of Computer Science and Engineering, SRM Institute of Science and Technology, Chennai, India \\
+Email: \{sk2576, sc3892, sd0382, alicenia\}@srmist.edu.in}
+\IEEEauthorblockA{\IEEEauthorrefmark{2}Department of Electronics and Communication Engineering, SRM Institute of Science and Technology, Chennai, India \\
+Email: \{anusuyak, gnanaveb\}@srmist.edu.in}
+\IEEEauthorblockA{\IEEEauthorrefmark{3}CFD Engineer, SRM Institute of Science and Technology, Chennai, India}
+}
+
+\maketitle
+
+\begin{abstract}
+Traditional Computational Fluid Dynamics (CFD) solvers require significant computational time to resolve complex non-linear partial differential equations, making real-time thermal management design challenging. In this paper, we propose a Real-Time Thermal Prediction Framework for Jet Impingement Cooling that replaces traditional solvers with a data-driven "Digital Twin". The framework provides instant predictions (under 50 milliseconds) of 3D thermal and fluid fields, including temperature, pressure, and velocity. The system leverages a monolithic machine learning pipeline running on CUDA-enabled GPUs, exploring a dual-path architecture that compares a Physics-Informed 3D U-Net operating on voxelized grids against a Graph Neural Surrogate modelling mesh connectivity natively. Our results indicate that advanced data engineering techniques—specifically Eulerian Mass Voxelization and Lagrangian K-Means clustering—successfully overcome the memory limitations and gradient pathologies of standard Physics-Informed Neural Network (PINN) architectures. The deployment of these surrogate models incorporates mixed-precision training paradigms, dynamic learning rate scheduling, and GPU-accelerated stream tracing, offering a highly optimized and scalable machine learning paradigm for advanced thermal engineering.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Machine Learning, Digital Twin, Jet Impingement Cooling, 3D U-Net, Graph Neural Networks, Convolutional Neural Networks, Surrogate Modeling
+\end{IEEEkeywords}
+
+\section{Introduction}
+As power densities in modern electronics, data centers, and advanced avionics continue to escalate, high-performance thermal management is required. Single cylindrical jet impingement cooling provides exceptionally high, localized convective heat transfer rates. Typically, analyzing the thermodynamic efficiency of jet impingement requires robust Computational Fluid Dynamics (CFD) profiling. Traditional CFD tools numerically iterate over continuity, momentum, and energy conservation equations. Resolving these coupled, non-linear partial differential equations (PDEs) across heavily refined discrete meshes often takes multi-core processors hours or days per design iteration.
+
+The primary objective of this work is to introduce a Machine Learning (ML) driven Real-Time Thermal Prediction Framework. Operating as a predictive "Digital Twin", this surrogate model circumvents iterative PDE mathematical solvers entirely. By shifting the massive computational burden to a one-time offline network training phase, the deployed neural operator yields near-instantaneous online inference of complex 3D aerodynamic and thermal interactions for untested boundary constraints. 
+
+\section{Dataset Generation and Preprocessing}
+To achieve reliable interpolation without overfitting, the surrogate model pipeline requires a dense, highly structured distribution of high-fidelity physical data.
+
+\subsection{Parametric Sweep and Simulation}
+The baseline ground-truth target tensors are generated using Ansys Icepak, explicitly employing a rigorous $k-\epsilon$ turbulence model to account for the chaotic fluid-wall mixing profiles at the stagnation zone. The dataset distribution systematically sweeps across core boundary constraints: 
+\begin{itemize}
+    \item \textbf{Inlet Velocity ($V_{in}$):} Continuous sweeping from $-3$ to $-12$ m/s.
+    \item \textbf{Power Load ($Q$):} Variations from $40$ W to $85$ W, mimicking varied computational workloads.
+    \item \textbf{Nozzle-to-Target Spacing ($H/D$):} Geometric spacing ratios spanning from $4$ to $8$.
+\end{itemize}
+
+An optimal unstructured continuous mesh consisting of approximately $1.73 \times 10^6$ nodes was curated strictly to resolve strict boundary layers (ensuring $y^+ \approx 1$). The data generation yielded 74 successful, physically converged simulation iterations. 
+
+\subsection{Data Scaling and Strict Separation}
+Raw simulation data is exported utilizing an HDF5 big-data format. Nine physical arrays are extracted: $[X, Y, Z, \text{Temperature}, \text{Pressure}, \text{Vel}_x, \text{Vel}_y, \text{Vel}_z, \text{TKE}]$.
+
+To inhibit vanishing or exploding gradients during backpropagation, global min-max normalization is universally applied. Absolute physical extrema across the \textit{entire} training distribution are identified to scale the multi-physics targets strictly into a $[0, 1]$ operational bound. Critically, to prevent data leakage and empirically validate generalization, the dataset is partitioned entirely at the file level into a 90/10 Train-Validation split. Neural validation is conducted exclusively on unseen geometrical boundary variations.
+
+\section{Dual-Path AI Processing Architecture}
+Initial exploratory development aimed to directly optimize Physics-Informed Neural Networks (PINNs). However, PINN loss landscapes are notoriously hyper-complex. PINN formulations scaled poorly against dense $1.73\times 10^6$ node CFD meshes and triggered critical Out-Of-Memory (OOM) failures under standard VRAM capacities. To circumvent these hard bottlenecks, the architecture bifurcated into two mutually exclusive machine learning pipelines: an Eulerian Path (Voxelization + 3D U-Net) and a Lagrangian Path (Graph Clustering + GNN).
+
+\section{Path A: Eulerian 3D U-Net Framework}
+Path A restructures the continuous spatial domain into a uniform Eulerian lattice, leveraging the powerful hierarchical feature extraction of 3D Convolutional layers.
+
+\subsection{Mass Voxelization Engineering}
+Unstructured geometry inherently lacks the uniform spacing necessary for classic convolutions. The $1.73\times10^6$ nodes are mathematically discretized into a structurally rigid $128 \times 128 \times 128$ voxel grid. For any physical property $\phi$, the voxelized tensor field $\Phi_{i,j,k}$ is computed via bounding-box spatial binning:
+\begin{equation}
+    \Phi_{i,j,k} = \frac{1}{|V_{i,j,k}|} \sum_{n \in V_{i,j,k}} \phi_n
+\end{equation}
+where $V_{i,j,k}$ is the set of native mesh nodes located topologically inside the voxel $(i, j, k)$. Consequently, a static binary fluid mask $M_{i,j,k}$ is output to precisely isolate ambient solid blocks from active fluid cells.
+
+\subsection{Network Topology and Skip Connections}
+The network is structured as a fully convolutional \textbf{3D U-Net}. The input is mathematically formulated as a 3-channel tensor ($3 \times 128 \times 128 \times 128$): one channel encoding the static fluid mask, and two channels broadly encoding the specific continuous trial boundary conditions ($V_{in}, Q$) uniformly constrained by the mask. 
+
+The Encoder pathway sequentially applies double 3D Convolutions followed by Max Pooling. The feature depth systematically expands ($16 \rightarrow 32 \rightarrow 64 \rightarrow 128$) while the spatial resolution collapses to a compacted $8 \times 8 \times 8$ bottleneck tensor featuring 256 deep physical filters. This bottleneck captures macro-thermodynamic trends (global heat spreading).
+
+However, fluid dynamics demands high-frequency spatial awareness. Therefore, the Decoder layers utilize Convolutions Transpose to upsample the data. Crucially, \textit{Skip Connections} concatenate the high-resolution, low-level spatial features from the Encoder directly across to the Decoder. This guarantees the network recovers sharp boundary layers and specific localized geometric corners lost during initial pooling algorithms. The final convolution outputs exactly 6 channels (Temp, Press, TKE, $V_x, V_y, V_z$).
+
+\subsection{Activation, Loss Formulation, and Training Optimization}
+Using Rectified Linear Units (ReLU) invokes sharp, non-differentiable scalar cutoffs ($\max(0, x)$), directly yielding unphysical blocky artifacting within the predicted momentum fields. Consequently, the network uniformly utilizes the Gaussian Error Linear Unit (GELU), $x \Phi(x)$, guaranteeing mathematically smooth gradient derivatives for strict physics fidelity.
+
+To combat chaotic localized pressure differentials directly beneath the jet plume, the framework replaces standard Mean Squared Error (MSE) with the Smooth L1 (Huber) Loss algorithm. This limits outlier penalties mathematically, smoothing the gradient trajectory.
+
+The entire 3D network optimizes via the \textbf{AdamW} optimizer ($lr=1e^{-4}$, weight decay=$1e^{-4}$). By leveraging PyTorch's Automatic Mixed Precision (\texttt{torch.cuda.amp}), operations efficiently utilize fp16 tensor cores to double batch throughput whilst halving VRAM load footprint. Furthermore, training relies on a \texttt{ReduceLROnPlateau} scheduler, strictly monitoring generalized validation loss and dynamically cutting the learning rate by $50\%$ upon 20-epoch optimization stagnation.
+
+A terminal physical constraint is permanently invoked: the raw output tensor is multiplied element-wise by the static fluid mask $M_{i,j,k}$, forcefully guaranteeing zero flow and ambient containment identically matched to the physical limits.
+
+\section{Path B: Lagrangian Graph Neural Surrogate}
+While U-Nets enforce Eulerian structure, Path B respects the native unstructured node connectivity specifically using Graph Neural Networks (GNN).
+
+\subsection{K-Means Structural Reduction}
+To circumvent the $O(N^2)$ memory limits of adjacency matrix message passing, the graph undergoes sophisticated scale reduction. A heuristic feature engineering phase extracts local velocity gradients ($\nabla \vec{u}$) and TKE variables, mapping a localized scalar ``importance score'' $I_n$ to the $1.73$M nodes.
+
+Regions of high physical turbulence (the stagnation region) yield high scores, while ambient outer shells score minimally. Utilizing a physically weighted K-Means clustering algorithm, the massive domain collapses strictly down to a highly optimized 20,000 node directed graph ($\mathcal{G} = (\mathcal{V}, \mathcal{E})$). This secures the micro-physics whilst completely neutralizing graph topology memory overflow.
+
+\subsection{NNConv and Edge-Conditioned Message Passing}
+The core network utilizes the \texttt{NNConv} layout. The adjacency structure is built statically via a localized $K$-Nearest Neighbor ($K=6$) topological sweep. The directional edge attributes connecting node $i$ to node $j$ are dynamically stored as a geometric 4-dimensional vector:
+\begin{equation}
+    \mathbf{e}_{i,j} = \left[ d_{i,j}, x_i - x_j, y_i - y_j, z_i - z_j \right]
+\end{equation}
+where $d_{i,j}$ marks the pure Euclidean distance. The explicit message-passing update mechanism mapping a node's physical feature state $\mathbf{x}_i$ from layer $l$ to $l+1$ is strictly:
+\begin{equation}
+    \mathbf{x}_i^{(l+1)} = \mathbf{\Theta} \mathbf{x}_i^{(l)} + \sum_{j \in \mathcal{N}(i)} \mathbf{x}_j^{(l)} \cdot h_{\mathbf{\Theta}}(\mathbf{e}_{i,j})
+\end{equation}
+where $\mathbf{\Theta}$ remains the trained filter matrix, $\mathcal{N}(i)$ outlines the immediate graph connections, and $h_{\mathbf{\Theta}}$ acts as an embedded Multi-Layer Perceptron (comprising 2 hidden layers with ReLU). This MLP continuously generates uniquely weighted interaction vectors calibrated intensely by the varying distance boundaries $d_{i,j}$.
+
+\subsection{Physics-Constrained Loss Optimization}
+Training strictly avoids catastrophic node fracturing (anomalous singular nodes with $500^{\circ}$C predictions scattered amidst $40^{\circ}$C layers) typically prevalent in standard GNNs. Alongside explicit MAE optimization, a spatial Laplacian smoothness regularization loss is simultaneously minimized, heavily penalizing harsh thermodynamic discontinuities directly between adjacent linked vertices.
+
+\section{Visual Analytics and Deployment}
+Under operational inference conditions, generating outputs for blind boundary bounds requires under 50 milliseconds dynamically. Both Path A and Path B outputs invoke immediate mathematical inverse-scaling bounds mapped perfectly translating predictions back to tangible physical scalars (Pascal, Celsius, m/s). 
+
+\subsection{Automated Metric Extraction}
+For real-world engineering viability, the surrogate Python deployment stack automatically traces performance. The maximum localized tensor variable $T_{chip,max}$ translates instantly into physical Temperature Rise Metrics ($\Delta T$). More critically, it calculates the definitive thermal efficiency constraint—Thermal Resistance ($R_{th}$) calculated strictly as $\Delta T / Q$, facilitating real-time automated design optimization screening capabilities.
+
+\subsection{GPU-Accelerated Visualization Pipelines}
+Traditional sparse matplotlib profiling failed to extract holistic 3D streamline phenomena effectively. Resultingly, machine output tensors are exported tightly into VTK array structures (\texttt{.vti}). Harnessing custom OpenGL hardware acceleration parameters within the PyVista library pipeline (\texttt{render\_lines\_as\_tubes=True}), graphics cards natively compute and render hundreds of interactive particle traces. Thermal engineers can actively rotate and examine boundary layer dissipations, stagnation thermal mapping, and continuous turbulence vortex formulations identically to multi-million dollar traditional CFD solver interfaces.
+
+\section{Conclusion}
+This framework delineates an ultra-fast, GPU-accelerated Machine Learning surrogate paradigm engineered tightly for electronics thermal management optimization. By directly scaling past PINN hardware limitations, the dual Eulerian/Lagrangian architectural benchmark proves that data scaling—specifically structural Eulerian voxelization and geometric weighted K-Means graph clustering—thwart raw memory bottlenecks effectively. Implementing skip-connection physics topologies, mixed-precision learning schedulers, and Laplacian constraints yields an AI environment capable of sub-50ms reliable thermal profiling, laying advanced groundwork for future real-time generative design automation.
+
+\end{document}
