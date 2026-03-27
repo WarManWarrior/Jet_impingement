@@ -224,8 +224,9 @@ def process_single_h5_file(filepath, save_dir, global_stats, device):
         if density < 0.2:
             print(f"  -> ⚠️ LOW DENSITY")
 
-        # 10. Save
-        save_name = os.path.basename(filepath).replace(".h5", ".pt")
+        # 10. Save (Prefix with H4/H5 to avoid collisions across different ratios)
+        h_prefix = "H4" if "H4" in filepath.upper() else "H5"
+        save_name = f"{h_prefix}_" + os.path.basename(filepath).replace(".h5", ".pt")
         save_path = os.path.join(save_dir, save_name)
         torch.save({
             "input": input_grid.cpu(),
