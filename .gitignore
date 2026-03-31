@@ -1,0 +1,26 @@
+# Data
+Data/
+*.dat
+*.csv
+
+# Models
+*.pt
+*.pth
+
+# Pickle files
+*.pkl
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Outputs
+*.png
