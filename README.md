@@ -1,70 +1,88 @@
-# Jet Impingement CFD Graph Neural Surrogate
+# Jet Impingement CFD: Fourier Neural Operator (FNO) & Graph Neural Network (GNN)
 
-This repository contains a complete, physics-aware Graph Neural Network (GNN) pipeline designed to act as a **lightning-fast surrogate model** for fluid dynamics and heat transfer simulations (CFD) in Jet Impingement cooling. 
-
-By replacing expensive Navier-Stokes solvers with an edge-conditioned Neural Operator, this system ingests boundary condition parameters (Velocity, Power) and natively renders high-fidelity 3D spatial Temperature and Pressure distributions in milliseconds.
+This repository contains a state-of-the-art research pipeline for building **AI-based thermal surrogates** for jet impingement cooling. The system is designed to replace million-node CFD simulations with lightning-fast neural operators (3D FNO) and graph-based models (GNN).
 
 ---
 
-## 🚀 Pipeline Architecture
+## 🌪️ Project Overview
+Jet impingement is a critical cooling technology for electronics and power systems. CFD simulations are computationally expensive (~12 million nodes per run). This project implements two main architectures to predict 3D Temperature (T), Pressure (P), and Velocity (V) fields:
 
-The system is broken down into three core operational scripts that must be executed sequentially: data reduction, neural training, and deployment evaluation.
-
-### 1. `preprocess.py` (Data Engineering & Spatial Reduction)
-CFD meshes natively produce millions of nodes (~1.7M+), which causes Out-Of-Memory (OOM) failures for Graph convolutions. The preprocessing script intelligently scales down the physics.
-
-* **Feature Engineering:** Extracts spatial velocity gradients, Turbulent Kinetic Energy (TKE), and Temperature deviations to assign physical "importance scores" to every node.
-* **Smart Filtering:** Removes boundary masking and low-activity stagnant zones.
-* **Clustering Extraction:** Deploys an optimized K-Means structural reduction to physically cluster the 1.7M fluid domain down into a lightweight `Training_Clustered_20K` mesh for training constraints and a denser `Validation_Masked_238K` mesh for rendering.
-* **Output:** Saves isolated `.h5` files optimized structurally for PyTorch Geometric (PyG).
-
-### 2. `gnn_pipeline.py` (Physics-Aware Core Surrogate)
-The heart of the Neural Operator. This script trains the model strictly avoiding Data Leakage (it hides CFD flow arrays and learns exclusively from input physical bounds).
-
-* **Boundary Constraints Check:** Parses dataset file names to extract global `[Velocity, Power]` domains and enforce raw min-max normalizations mapping to scale variables natively `(vel_in - 3)/7` and `(pow_in - 40)/40`.
-* **Graph Convolution (`ThermalGNN`)**: Engineers a 7-channel dynamic topology wrapped mapping spatial edge relationships `[distance, dx, dy, dz]` cleanly into PyTorch Geometric's `NNConv` mechanism. 
-* **Hardware Optimizations**: Runs completely via PyTorch's Automatic Mixed Precision (`torch.amp`) restricting convolutions to `k=6` neighbors and `hidden=32` filters bounding GPU footprints securely.
-* **Physics Loss Framework**: Maps standard Data Loss alongside a continuous spatial mapping Laplacian (`smoothness_loss`) restricting isolated thermodynamic node fracturing dynamically.
-* **Output:** Writes the absolute scalar mappings natively alongside the neural mapping parameters locally into `thermal_gnn.pth`.
-
-### 3. `evaluate_surrogate.py` (Quantitative Visual Analytics)
-Executes runtime inference and model diagnostics testing using fully unseen boundary domains.
-
-* **State Reloading**: Autoloads explicit `thermal_gnn.pth` network architectures and dimensional weights cleanly.
-* **Interpolation Deployment**: Computes arbitrary, unseen interpolation logic (i.e. `Velocity: 6.3m/s, Power: 52W`) natively bridging thermodynamic outputs statically across PyTorch grids.
-* **Quantitative Analysis**: Generates Root Mean Squared Error (`RMSE`) and Mean Absolute Error (`MAE`) against real baseline structural coordinates natively.
-* **3D Matplotlib Rendering**: Dynamically sweeps and exports rich mathematical visualizations locally into the `/visualizations` directory, mapping gradients directly to target thermal profiles `[target °C]`.
+1.  **3D Fourier Neural Operator (FNO)**: Processes structured $64^3$ voxel grids for extreme global spatial capture.
+2.  **Edge-Conditioned GNN**: Processes unstructured 20k-node reduced meshes for localized geometric precision.
 
 ---
 
-## ⚡ Execution Instructions
-
-**Step 1: Parse the Raw CFD Sim Volumes**
-Ensure your mesh sets exist at root paths.
-```bash
-python preprocess.py
-```
-
-**Step 2: Train the Neural Operator**
-Adjust the strict drive endpoints (e.g. `D:\data\JET\...`) directly pointing to the exported `Training_Clustered_20K` directories.
-```bash
-python gnn_pipeline.py
-```
-*(Model topology and standardization states will automatically compile tightly into `thermal_gnn.pth`.)*
-
-**Step 3: Validate Predictions & Map Heatmaps**
-Once the checkpoint exists locally, trigger testing evaluations extracting target 3D spatial interpolations.
-```bash
-python evaluate_surrogate.py
-```
-Check your `/visualizations` path for direct visual evaluation validation graphics comparing to your base CFD mesh.
+## 📂 Dataset Specification
+*   **Source Data**: Located in `D:\data\JET\H4` and `D:\data\JET\H5`.
+*   **Geometric Variants**:
+    *   **H4**: Nozzle diameter $D = H/4$.
+    *   **H5**: Nozzle diameter $D = H/5$.
+*   **Simulation Count**: 166 independent simulations across varying inlet Velocities (3-12 m/s) and Input Power (40-85 W).
+*   **Raw Resolution**: Each HDF5 file contains ~11.9 million nodes.
 
 ---
 
-## ⚙️ Dependencies
+## 🛠️ File Manifest & Pipeline Flow
 
-* `torch` (Hardware explicit CUDA enabled variant highly recommended for NNConv execution)
-* `torch_geometric`
-* `h5py` for binary structure arrays
-* `numpy`
-* `matplotlib` for 3D topological Heatmap renderings
+### 1. Raw CFD Diagnostics (Pre-Normalization)
+*   **`raw_data_eda.py`**: 
+    *   **Purpose**: Scans all 166 HDF5 files to perform a physical and geometric audit.
+    *   **Insights**: Verifies Temperature is in Celsius [20-62°C], checks 100% geometric alignment of bounding boxes, and confirms node counts (~12M/mesh).
+    *   **Outputs**: `/raw_eda_results/` (Histograms, Bounding box alignment).
+
+### 2. Structured FNO Pipeline
+*   **`fno_prep.py`**: 
+    *   **Purpose**: Voxelizes the 12M nodes into a $64 \times 64 \times 64$ structured grid.
+    *   **Key Logic**: Geometric prefixing (`H4_`/`H5_`) to prevent filename collisions. Velocity-weighted voxelization to preserve jet intensity.
+    *   **Data Saving**: Organizes processed tensors into `D:\data\JET\FNO_Prepared`.
+*   **`pca_analysis.py`**: 
+    *   **Purpose**: Performs Principal Component Analysis on the 64^3 grids.
+    *   **Insights**: Identifies the 10 dominant flow/thermal modes. Correlates PC scores with physical parameters (Velocity, Power, Diameter).
+    *   **Outputs**: `/pca_results/` (Explained variance, Spatial mode slices).
+*   **`comprehensive_eda.py`**: 
+    *   **Purpose**: Post-voxelization statistical scan for data integrity and spatial profiles (centerline T-profile).
+    *   **Outputs**: `/eda_results/`.
+
+### 3. Unstructured GNN Pipeline (Baseline)
+*   **`preprocess.py`**: 
+    *   **Purpose**: Implements physics-aware data reduction using "Importance Scoring" (Variance + Gradient).
+    *   **Logic**: Uses K-Means to cluster 12M nodes down to 20k structural "anchor nodes."
+*   **`gnn_pipeline.py` & `digital_twin.py`**: 
+    *   **Purpose**: Training logic and model architecture using `NNConv` and complex edge features `[dist, dx, dy, dz]`.
+*   **`interactive_viewer.py`**: 
+    *   **Purpose**: Real-time 3D Plotly rendering for GNN results.
+
+---
+
+## 🚀 Execution Instructions
+
+### A. FNO Diagnostic & Preprocessing Flow
+1.  **Direct CFD Audit**:
+    `python raw_data_eda.py`
+2.  **Generate Structured Grids**:
+    `python fno_prep.py`
+3.  **Physical Parametric Analysis**:
+    `python pca_analysis.py`
+    `python comprehensive_eda.py`
+
+### B. GNN Reduction Flow
+1.  **Reduce Mesh Density**:
+    `python preprocess.py`
+2.  **Scale and Cluster**:
+    `python train_twin.py`
+
+---
+
+## 📊 Key Results to Date
+*   **Data Reduction**: Achieved **45x compression** from raw 11.9M nodes to a structures 64^3 grid.
+*   **Consistency**: Verified 100% geometric synchronization across H4 and H5 files.
+*   **Normalization**: Implemented global Welford-based 2-pass normalization to ensure stable cross-dataset training.
+
+---
+
+## ⚙️ Core Dependencies
+*   `torch` (GPU Acceleration recommended)
+*   `h5py` (HDF5 data access)
+*   `numpy` & `scipy`
+*   `matplotlib` & `seaborn` (Visualizations)
+*   `sklearn` (PCA & Clustering)
