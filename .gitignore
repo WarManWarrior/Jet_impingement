@@ -5,3 +5,15 @@ ref.md
 gnn.md
 visualizations
 __pycache__
+fix.md
+scaler_aux.pkl
+scaler_global.pkl
+scaler_spatial.pkl
+scaler_skewed.pkl
+scaler_temp.pkl
+scaler_vel.pkl
+scaler_target_power.pkl
+train.pt
+val.pt
+test.pt
+dimen.md
