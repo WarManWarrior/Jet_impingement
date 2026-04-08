@@ -1,151 +1,141 @@
+"""
+=============================================================================
+  LATENT GNN — HETEROGENEOUS JET IMPINGEMENT SURROGATE
+
+  CHANGES FROM PREVIOUS VERSION (ported from working v4 code):
+    NEW  Virtual global node in each processor layer:
+         Ported from v4 MGNBlock. After local GATv2Conv message passing, computes
+         global_mean_pool over all latent nodes, transforms through a small MLP,
+         and broadcasts back to every latent node. This is essential for pressure:
+         pressure satisfies an elliptic PDE (Poisson equation) meaning it is
+         globally coupled — a change at the inlet affects pressure everywhere
+         simultaneously. Local message passing alone, regardless of depth, cannot
+         propagate this. The global node provides an O(1) long-range path.
+
+    FIX  in_features updated to 15 (was 14) for new bc_velocity feature.
+=============================================================================
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import SAGEConv
+from torch_geometric.nn import GATv2Conv
+from torch_geometric.nn import global_mean_pool
+
 
 class MLP(nn.Module):
-    """A standard Multi-Layer Perceptron for independent node processing."""
     def __init__(self, in_channels, hidden_channels, out_channels, num_layers=3):
         super().__init__()
-        layers = []
-        layers.append(nn.Linear(in_channels, hidden_channels))
-        layers.append(nn.GELU())
-        
+        layers = [nn.Linear(in_channels, hidden_channels), nn.GELU()]
         for _ in range(num_layers - 2):
-            layers.append(nn.Linear(hidden_channels, hidden_channels))
-            layers.append(nn.GELU())
-            
+            layers += [nn.Linear(hidden_channels, hidden_channels), nn.GELU()]
         layers.append(nn.Linear(hidden_channels, out_channels))
         self.net = nn.Sequential(*layers)
 
     def forward(self, x):
         return self.net(x)
 
+
 class JetLatentGNN(nn.Module):
-    def __init__(self, in_features=12, hidden_features=128, out_features=5, latent_layers=4):
+    def __init__(self, in_features=16, hidden_features=128, out_features=5, latent_layers=4):
         super().__init__()
-        
-        print("Initializing JetLatentGNN...")
-        print(f" -> Input Features: {in_features}")
+        print("Initializing JetLatentGNN v2 (Parameter Node + strong global)")
+        print(f" -> Input Features  : {in_features}  (includes signed_dist_wall)")
         print(f" -> Hidden Dimension: {hidden_features}")
-        print(f" -> Output Targets: {out_features}")
-        
-        # 1. Independent Fine-Node Encoder
+
         self.encoder = MLP(in_features, hidden_features, hidden_features, num_layers=3)
-        
-        # 2. Bipartite Up-Pool (Fine -> Latent)
-        # SAGEConv requires (source_channels, target_channels) for bipartite graphs
-        self.up_conv = SAGEConv((hidden_features, hidden_features), hidden_features)
-        
-        # 3. Latent Space Processor (Latent -> Latent)
+
+        self.up_conv = GATv2Conv((hidden_features, hidden_features), hidden_features, heads=1, edge_dim=1, add_self_loops=False, concat=False)
+
         self.processor_layers = nn.ModuleList([
-            SAGEConv(hidden_features, hidden_features) for _ in range(latent_layers)
+            GATv2Conv(hidden_features, hidden_features, heads=1, edge_dim=1, add_self_loops=False, concat=False)
+            for _ in range(latent_layers)
         ])
-        
-        # 4. Bipartite Down-Pool (Latent -> Fine)
-        self.down_conv = SAGEConv((hidden_features, hidden_features), hidden_features)
-        
-        # 5. Independent Fine-Node Decoder
-        # We multiply by 2 because we use a skip connection (original encoded + down-pooled)
-        self.decoder = MLP(hidden_features * 2, hidden_features, out_features, num_layers=3)
+
+        self.global_mlps = nn.ModuleList([
+            nn.Sequential(
+                nn.Linear(hidden_features, hidden_features),
+                nn.LayerNorm(hidden_features),
+                nn.GELU(),
+                nn.Linear(hidden_features, hidden_features)
+            ) for _ in range(latent_layers)
+        ])
+
+        # Parameter Node (continuous conditioning)
+        self.param_mlp = MLP(6, 128, hidden_features, num_layers=2)
+
+        self.down_conv = GATv2Conv((hidden_features, hidden_features), hidden_features, heads=1, edge_dim=1, add_self_loops=False, concat=False)
+
+        self.decoder = MLP(hidden_features * 2 + hidden_features, hidden_features, out_features, num_layers=3)
 
     def forward(self, data):
-        """
-        data: The HeteroData object from dimen_red.py fused with dynamic DataLoader features.
-        """
-        # Extract features and edge matrices
         x_fine = data['fine'].x
-        
-        # Bug 3 Fix: Extract edge attributes (distances) and convert to inverse-weights
-        # This gives spatially closer nodes higher influence in the message passing.
         edge_index_up = data['fine', 'maps_to', 'latent'].edge_index
-        edge_attr_up  = data['fine', 'maps_to', 'latent'].edge_attr
-        w_up = 1.0 / (edge_attr_up.squeeze() + 1e-6)
-        
         edge_index_down = data['latent', 'maps_to', 'fine'].edge_index
-        edge_attr_down  = data['latent', 'maps_to', 'fine'].edge_attr
-        w_down = 1.0 / (edge_attr_down.squeeze() + 1e-6)
-        
         edge_index_latent = data['latent', 'interacts_with', 'latent'].edge_index
-        edge_attr_latent  = data['latent', 'interacts_with', 'latent'].edge_attr
-        w_lat = 1.0 / (edge_attr_latent.squeeze() + 1e-6)
-        
-        # ==========================================
-        # 1. ENCODE
-        # ==========================================
-        h_fine_encoded = self.encoder(x_fine)
-        
-        # Initialize latent node features as zeros (they are empty containers waiting for data)
+
+        edge_attr_up = data['fine', 'maps_to', 'latent'].edge_attr
+        edge_attr_down = data['latent', 'maps_to', 'fine'].edge_attr
+        edge_attr_latent = data['latent', 'interacts_with', 'latent'].edge_attr
+
+        h_fine = self.encoder(x_fine)
         num_latent = data['latent'].pos.size(0)
-        h_latent = torch.zeros((num_latent, h_fine_encoded.size(1)), device=h_fine_encoded.device)
-        
-        # ==========================================
-        # 2. UP-POOL (Fine -> Latent)
-        # ==========================================
-        # Pass messages from fine (source) to latent (target) weighted by distance
-        h_latent = self.up_conv((h_fine_encoded, h_latent), edge_index_up, edge_weight=w_up)
+        h_latent = torch.zeros((num_latent, h_fine.size(1)), device=h_fine.device)
+
+        h_latent = self.up_conv((h_fine, h_latent), edge_index_up, edge_attr_up)
         h_latent = F.gelu(h_latent)
-        
-        # ==========================================
-        # 3. PROCESS LATENT MACRO-PHYSICS
-        # ==========================================
-        # Pass messages across the latent graph to simulate pressure/momentum waves
-        for conv in self.processor_layers:
-            h_latent_new = conv(h_latent, edge_index_latent, edge_weight=w_lat)
-            h_latent_new = F.gelu(h_latent_new)
-            h_latent = h_latent + h_latent_new # Residual/Skip connection prevents vanishing gradients
-            
-        # ==========================================
-        # 4. DOWN-POOL (Latent -> Fine)
-        # ==========================================
-        # Pass messages from latent (source) back to fine (target) weighted by distance
-        h_fine_decoded = self.down_conv((h_latent, h_fine_encoded), edge_index_down, edge_weight=w_down)
+
+        # Parameter embedding (first 6 columns = global params)
+        global_params = x_fine[0, :6]
+        param_emb = self.param_mlp(global_params.unsqueeze(0))
+
+        batch = torch.zeros(num_latent, dtype=torch.long, device=h_latent.device)
+
+        for conv, global_mlp in zip(self.processor_layers, self.global_mlps):
+            h_new = conv(h_latent, edge_index_latent, edge_attr_latent)
+            h_new = F.gelu(h_new)
+            h_new = h_latent + h_new
+
+            g_summary = global_mean_pool(h_new, batch)
+            g_context = global_mlp(g_summary)
+            h_latent = h_new + g_context[batch] + param_emb[batch]
+
+        h_fine_decoded = self.down_conv((h_latent, h_fine), edge_index_down, edge_attr_down)
         h_fine_decoded = F.gelu(h_fine_decoded)
-        
-        # ==========================================
-        # 5. DECODE
-        # ==========================================
-        # Concatenate the deeply processed fluid physics with the raw encoded geometry 
-        # so the network remembers exactly where the wall and stagnation zones are.
-        out = self.decoder(torch.cat([h_fine_decoded, h_fine_encoded], dim=-1))
-        
+
+        # Concatenate fine_decoded, fine_encoded, and repeated parameter embedding
+        out = self.decoder(torch.cat([h_fine_decoded, h_fine, param_emb.repeat(h_fine.size(0), 1)], dim=-1))
         return out
 
-# Quick test if you run this script directly
+
+# ─────────────────────────────────────────────────
+#  SMOKE TEST
+# ─────────────────────────────────────────────────
 if __name__ == "__main__":
     from torch_geometric.data import HeteroData
+    import numpy as np
+
+    print("\nRunning smoke test (v2 structure)...")
+    model = JetLatentGNN(in_features=16, hidden_features=64, out_features=5, latent_layers=2)
     
-    model = JetLatentGNN(in_features=12) # Confirm: 4G + 6S + 1K + 1B = 12 inputs, 5 outputs (T, P, U, V, W)
-    
-    # Number of trainable parameters
-    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"\nModel instantiated successfully with {total_params:,} trainable parameters.")
-    
-    # Smoke test with dummy HeteroData
-    print("\nRunning forward-pass smoke test...")
-    num_fine, num_latent = 1000, 100  # small for testing
-    
+    num_fine, num_latent = 1000, 50
     data = HeteroData()
-    data['fine'].x   = torch.randn(num_fine, 12)
-    data['fine'].pos  = torch.randn(num_fine, 3)
+    data['fine'].x   = torch.randn(num_fine, 16)
+    data['fine'].pos = torch.randn(num_fine, 3)
     data['latent'].pos = torch.randn(num_latent, 3)
     
-    # Dummy edges: fine->latent (up), latent->fine (down), latent->latent
-    data['fine', 'maps_to', 'latent'].edge_index = torch.randint(0, num_fine, (2, num_fine * 3))
-    data['fine', 'maps_to', 'latent'].edge_index[1] = torch.randint(0, num_latent, (num_fine * 3,))
-    data['fine', 'maps_to', 'latent'].edge_attr  = torch.rand(num_fine * 3, 1) # Added Bug 3
+    data['fine', 'maps_to', 'latent'].edge_index = torch.randint(0, num_latent, (2, num_fine))
+    data['fine', 'maps_to', 'latent'].edge_attr = torch.randn(num_fine, 1)
     
-    data['latent', 'maps_to', 'fine'].edge_index = torch.flip(
-        data['fine', 'maps_to', 'latent'].edge_index, dims=[0]
-    )
-    data['latent', 'maps_to', 'fine'].edge_attr  = torch.rand(num_fine * 3, 1) # Added Bug 3
+    data['latent', 'maps_to', 'fine'].edge_index = torch.randint(0, num_fine, (2, num_fine))
+    data['latent', 'maps_to', 'fine'].edge_attr = torch.randn(num_fine, 1)
     
     src_lat = torch.randint(0, num_latent, (num_latent * 15,))
-    tgt_lat = torch.randint(0, num_latent, (num_latent * 15,))
-    data['latent', 'interacts_with', 'latent'].edge_index = torch.stack([src_lat, tgt_lat])
-    data['latent', 'interacts_with', 'latent'].edge_attr  = torch.rand(num_latent * 15, 1) # Added Bug 3
-    
+    dst_lat = torch.randint(0, num_latent, (num_latent * 15,))
+    data['latent', 'interacts_with', 'latent'].edge_index = torch.stack([src_lat, dst_lat])
+    data['latent', 'interacts_with', 'latent'].edge_attr = torch.randn(num_latent * 15, 1)
+
     out = model(data)
     print(f"Output shape: {out.shape}  (expected: [{num_fine}, 5])")
-    assert out.shape == (num_fine, 5), f"Shape mismatch! Got {out.shape}"
+    assert out.shape == (num_fine, 5)
     print("✓ Smoke test passed!")
