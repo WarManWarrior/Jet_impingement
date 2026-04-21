@@ -1,0 +1,75 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            zdyji7j6la9vts3q5gp365qtetw7e9jc:
+                codePath: train.py
+                codePathLocal: train.py
+                cpu_count: 10
+                cpu_count_logical: 16
+                cudaVersion: "13.2"
+                disk:
+                    /:
+                        total: "482580172800"
+                        used: "442707906560"
+                email: siddh200321@gmail.com
+                executable: C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Scripts\python.exe
+                git:
+                    commit: 575dcc71c40e420c6de9e964b8db24aa5ff27820
+                    remote: https://github.com/WarManWarrior/Jet_impingement.git
+                gpu: NVIDIA GeForce RTX 3050 6GB Laptop GPU
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 2560
+                      memoryTotal: "6442450944"
+                      name: NVIDIA GeForce RTX 3050 6GB Laptop GPU
+                      uuid: GPU-3cc80390-2a4a-9856-e2cc-7bd178d39450
+                host: ROG-Strix-G16
+                memory:
+                    total: "16780419072"
+                os: Windows-10-10.0.26200-SP0
+                program: C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\train.py
+                python: CPython 3.11.6
+                root: C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement
+                startedAt: "2026-04-08T16:21:49.388415Z"
+                writerId: zdyji7j6la9vts3q5gp365qtetw7e9jc
+        m: []
+        python_version: 3.11.6
+        t:
+            "1":
+                - 1
+                - 5
+                - 53
+                - 77
+            "2":
+                - 1
+                - 5
+                - 53
+                - 77
+            "3":
+                - 16
+            "4": 3.11.6
+            "5": 0.25.1
+            "8":
+                - 3
+            "12": 0.25.1
+            "13": windows-amd64
+batch_accumulation:
+    value: 8
+bc_weight:
+    value: 10
+device:
+    value: cuda
+epochs:
+    value: 150
+grad_clip:
+    value: 1
+learning_rate:
+    value: 0.0003
+phase2_epoch:
+    value: 80
+pressure_boost:
+    value: 3
+weight_decay:
+    value: 0.0001

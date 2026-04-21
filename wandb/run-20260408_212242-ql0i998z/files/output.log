@@ -1,0 +1,22 @@
+Using device: cuda
+Found 98 train sims, 40 val sims.
+Pre-loading Graph Templates (HD 4, 5, 6)...
+  ⚠ HD=4 template not found.
+  ⚠ HD=5 template not found.
+  ⚠ HD=6 template not found.
+Initializing JetLatentGNN v3 (Physics-aware, peak-preserving)
+ -> Input Features  : 16
+ -> Hidden Dimension: 128
+Model parameters: 537,989
+[Loss]  Outlet BC target (Z-score of 0 Pa) = -1.0433
+[Loss]  mean_P_log=-0.0000, std_P_log=1.0000
+
+============================================================
+  INITIATING TRAINING — Z-score loss | Two-phase | Global node
+============================================================
+Epoch 001/150 Phase 1 [T+V+P] [Train]:   0%|                                                                                                                                             | 0/98 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\train.py", line 303, in <module>
+    assert x_in.shape[1] == 16, f"Expected 16 features, got {x_in.shape[1]}"
+           ^^^^^^^^^^^^^^^^^^^
+AssertionError: Expected 16 features, got 18

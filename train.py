@@ -46,6 +46,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 import numpy as np
+import wandb
 
 from FeatureEngineering import JetImpingementDataset, STAGNATION_FLAG_IDX, GEOM
 from LatentGNN import JetLatentGNN
@@ -64,7 +65,23 @@ DEVICE             = torch.device('cuda' if torch.cuda.is_available() else 'cpu'
 # Two-phase training (ported from v4)
 PHASE2_EPOCH   = 80    # Phase 2 (outlet BC loss) starts at epoch 81
 W_BC           = 10.0  # weight for outlet pressure BC loss in Phase 2
-PRESSURE_BOOST = 2.0   # extra P weight in Phase 2 (lighter than v4's 5.0 — our log-P is already compressed)
+PRESSURE_BOOST = 3.0   # extra P weight in Phase 2 (lighter than v4's 5.0 — our log-P is already compressed)
+
+# ── wandb Initialization ─────────────────────────
+wandb.init(
+    project="Jet_Impingement_GNN",
+    config={
+        "learning_rate": LEARNING_RATE,
+        "epochs": EPOCHS,
+        "batch_accumulation": ACCUMULATION_STEPS,
+        "weight_decay": WEIGHT_DECAY,
+        "phase2_epoch": PHASE2_EPOCH,
+        "pressure_boost": PRESSURE_BOOST,
+        "bc_weight": W_BC,
+        "grad_clip": GRAD_CLIP,
+        "device": str(DEVICE)
+    }
+)
 
 # Outlet detection geometry (matches FeatureEngineering constants)
 D_M         = GEOM['D_m']
@@ -77,19 +94,53 @@ print(f"Using device: {DEVICE}")
 # ── NEW: Spatial importance weight (replacing v1 stagnation flag logic) ──
 def get_spatial_weight(fine_pos):
     """
-    Computes per-node importance weights based on physical location.
-    Stagnation Zone: Peak variance, 8x weight.
-    Wall boundary: Critical BL physics, 4x weight.
+    Physics-aware spatial weighting:
+    - Strong focus on stagnation region
+    - Extra emphasis on wall
+    """
+
+    xs, ys, zs = fine_pos[:,0], fine_pos[:,1], fine_pos[:,2]
+
+    # Distance from jet center
+    radius = torch.sqrt(
+        (xs - GEOM['jet_center_x'])**2 +
+        (zs - GEOM['jet_center_z'])**2
+    )
+
+    #Smooth stagnation weighting (Gaussian)
+    peak_weight = torch.exp(- (radius / GEOM['D_m'])**2) * 10.0
+
+    #Wall importance
+    wall_weight = (ys < 1e-4).float() * 5.0
+
+    # Final weight
+    w = 1.0 + peak_weight + wall_weight
+
+    return w
+
+
+def get_velocity_spatial_weight(fine_pos):
+    """
+    STRONGER velocity weighting — focuses on spreading zone + wall + stagnation.
+    This should make Vx/Vz losses drop much faster.
     """
     xs, ys, zs = fine_pos[:,0], fine_pos[:,1], fine_pos[:,2]
-    # Stagnation zone: r < D and near chip surface (y < 1mm)
-    stagnation = ((xs - GEOM['jet_center_x'])**2 + (zs - GEOM['jet_center_z'])**2 < (GEOM['D_m'])**2) & (ys < 0.001)
-    # Wall: direct surface interaction
-    wall = ys < 1e-4
-    
-    w = torch.ones(len(xs), device=DEVICE)
-    w[stagnation] = 8.0
-    w[wall] *= 4.0  # compounding if overlapping
+
+    radius = torch.sqrt(
+        (xs - GEOM['jet_center_x'])**2 +
+        (zs - GEOM['jet_center_z'])**2
+    )
+
+    # 🔥 Stronger annulus at 1.5D (where velocity peaks)
+    spread_weight = torch.exp(- ((radius - 1.5 * GEOM['D_m']) / GEOM['D_m'])**2) * 12.0   # was 6.0
+
+    # Wall (no-slip)
+    wall_weight = (ys < 1e-4).float() * 6.0     # was 3.0
+
+    # Mild stagnation (important for continuity)
+    stag_weight = torch.exp(- (radius / GEOM['D_m'])**2) * 3.0   # was 1.5
+
+    w = 1.0 + spread_weight + wall_weight + stag_weight
     return w
 
 
@@ -125,13 +176,14 @@ class NormalizedMSELoss(nn.Module):
     def _z(self, x, mean, std):
         return (x - mean) / std
 
-    def forward(self, pred, target, spatial_w, outlet_mask=None, phase2=False):
+    def forward(self, pred, target, spatial_w, vel_spatial_w=None, outlet_mask=None, phase2=False):
         """
-        pred         : (N, 5)  — model output in scaled space [T, P, Vx, Vy, Vz]
-        target       : (N, 5)  — ground truth in scaled space
-        spatial_w    : (N,)    — importance weights (8x stag, 4x wall)
-        outlet_mask  : (N,) bool — True at outlet nodes
-        phase2       : bool — enables BC loss and pressure boost
+        pred          : (N, 5)  — model output in scaled space [T, P, Vx, Vy, Vz]
+        target        : (N, 5)  — ground truth in scaled space
+        spatial_w     : (N,)    — importance weights for T and P (stagnation-centred)
+        vel_spatial_w : (N,)    — importance weights for Vx, Vy, Vz (spreading-zone-centred)
+        outlet_mask   : (N,) bool — True at outlet nodes
+        phase2        : bool — enables BC loss and pressure boost
         """
         # Z-score normalize all channels
         p_T  = self._z(pred[:,0],   self.mean_T,  self.std_T)
@@ -153,17 +205,25 @@ class NormalizedMSELoss(nn.Module):
         e_Vy = (p_Vy - t_Vy)**2
         e_Vz = (p_Vz - t_Vz)**2
 
-        # Thermal magnitude weight (retained for temperature stability)
-        temp_mag = (target[:, 0].detach().clamp(min=0.0) + 0.5)
+        # Thermal magnitude weight — capped to prevent T from crowding out velocity gradients.
+        # (T + 1)^2 was squaring high-temperature contributions; sqrt dampens the extremes
+        # while still keeping hot nodes important.
+        temp_mag = torch.sqrt(target[:, 0].detach().clamp(min=0.0) + 1.0)
+
+        # Use velocity-specific spatial weight if provided, else fall back to spatial_w
+        v_w = vel_spatial_w if vel_spatial_w is not None else spatial_w
 
         loss_T  = (e_T  * spatial_w * temp_mag).mean()
         loss_P  = (e_P  * spatial_w).mean()
-        loss_Vx = (e_Vx * spatial_w).mean()
-        loss_Vy = (e_Vy * spatial_w).mean()
-        loss_Vz = (e_Vz * spatial_w).mean()
+        loss_Vx = (e_Vx * v_w*1.5).mean()
+        loss_Vy = (e_Vy * v_w*1.5).mean()
+        loss_Vz = (e_Vz * v_w*1.5).mean()
 
         p_weight = PRESSURE_BOOST if phase2 else 1.0
         total = loss_T + p_weight * loss_P + loss_Vx + loss_Vy + loss_Vz
+
+        # NOTE: gradient loss removed — graph nodes are unordered in memory;
+        # pred[i+1]-pred[i] is between spatially unrelated nodes → pure noise.
 
         # Outlet pressure BC loss — Phase 2 only
         loss_bc = torch.tensor(0.0, device=pred.device)
@@ -223,7 +283,7 @@ for hd in [4, 5, 6]:
 # ─────────────────────────────────────────────────
 #  3. MODEL, LOSS, OPTIMIZER
 # ─────────────────────────────────────────────────
-model = JetLatentGNN(in_features=16, hidden_features=128, out_features=5, latent_layers=4).to(DEVICE)
+model = JetLatentGNN(in_features=18, hidden_features=128, out_features=5, latent_layers=4).to(DEVICE)
 total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print(f"Model parameters: {total_params:,}")
 
@@ -264,7 +324,10 @@ for epoch in range(1, EPOCHS + 1):
         t_in   = sim_ds.T.squeeze(0).to(DEVICE)   # [N, 5]
         del sim_ds
 
-        assert x_in.shape[1] == 16, f"Expected 16 features, got {x_in.shape[1]}"
+        assert x_in.shape[1] == 18, f"Expected 18 features, got {x_in.shape[1]}"
+
+        # 🔥 Small noise regularization
+        x_in = x_in + 0.01 * torch.randn_like(x_in)
 
         hd_match = re.search(r'H(\d+)', os.path.basename(sim_path))
         if not hd_match:
@@ -276,15 +339,34 @@ for epoch in range(1, EPOCHS + 1):
         graph['fine'].x = x_in
         graph['fine'].y = t_in
 
+        # 🔥 Curriculum learning: focus on core region early
+        # print(graph)
+        # print(type(graph))
+        break
         pred = model(graph)
-        spatial_w = get_spatial_weight(graph['fine'].pos)
+        fine_pos      = graph['fine'].pos[:x_in.shape[0]]
+        spatial_w     = get_spatial_weight(fine_pos)
+        vel_spatial_w = get_velocity_spatial_weight(fine_pos)
 
         loss, lt, lp, lvx, lvy, lvz, lbc = criterion(
             pred, t_in,
-            spatial_w   = spatial_w,
-            outlet_mask = outlet_mask,
-            phase2      = phase2,
+            spatial_w     = spatial_w,
+            vel_spatial_w = vel_spatial_w,
+            outlet_mask   = outlet_mask,
+            phase2        = phase2,
         )
+
+        # Log step-level metrics to wandb
+        wandb.log({
+            "step/loss_total": loss.item(),
+            "step/loss_T": lt,
+            "step/loss_P": lp,
+            "step/loss_Vx": lvx,
+            "step/loss_Vy": lvy,
+            "step/loss_Vz": lvz,
+            "step/loss_BC": lbc,
+            "step/phase": 2 if phase2 else 1
+        })
 
         if torch.isnan(loss):
             n_nan_skips += 1
@@ -326,7 +408,7 @@ for epoch in range(1, EPOCHS + 1):
             sim_ds = torch.load(sim_path, weights_only=False)
             x_in   = sim_ds.X.squeeze(0).to(DEVICE)
             t_in   = sim_ds.T.squeeze(0).to(DEVICE)
-            assert x_in.shape[1] == 16
+            assert x_in.shape[1] == 18
             del sim_ds
 
             hd_match = re.search(r'H(\d+)', os.path.basename(sim_path))
@@ -339,13 +421,15 @@ for epoch in range(1, EPOCHS + 1):
             graph['fine'].x = x_in
 
             pred = model(graph)
-            spatial_w = get_spatial_weight(graph['fine'].pos)
-            
+            spatial_w     = get_spatial_weight(graph['fine'].pos)
+            vel_spatial_w = get_velocity_spatial_weight(graph['fine'].pos)
+
             loss, lt, lp, lvx, lvy, lvz, lbc = criterion(
                 pred, t_in,
-                spatial_w   = spatial_w,
-                outlet_mask = outlet_mask,
-                phase2      = phase2,
+                spatial_w     = spatial_w,
+                vel_spatial_w = vel_spatial_w,
+                outlet_mask   = outlet_mask,
+                phase2        = phase2,
             )
             if torch.isnan(loss):
                 continue
@@ -374,4 +458,19 @@ for epoch in range(1, EPOCHS + 1):
         }, best_path)
         print(f"Best model → {best_path}  (val={best_val_loss:.4f})")
 
+    # Log epoch-level summary to wandb
+    wandb.log({
+        "epoch/train_loss": avg_train,
+        "epoch/val_loss": avg_val,
+        "epoch/val_T": val_t/n_val,
+        "epoch/val_P": val_p/n_val,
+        "epoch/val_Vx": val_vx/n_val,
+        "epoch/val_Vy": val_vy/n_val,
+        "epoch/val_Vz": val_vz/n_val,
+        "epoch/val_BC": val_bc/n_val,
+        "epoch/lr": optimizer.param_groups[0]['lr'],
+        "epoch": epoch
+    })
+
+wandb.finish()
 print("\nTraining complete.")

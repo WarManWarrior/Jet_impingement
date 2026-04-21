@@ -1,0 +1,20 @@
+# Core Machine Learning & GNN
+torch>=2.0.0
+torch-geometric
+torch-scatter
+torch-sparse
+torch-cluster
+torch-spline-conv
+
+# Data Processing
+numpy>=1.22.0
+pandas>=1.4.0
+h5py>=3.6.0
+scikit-learn>=1.0.0
+joblib
+tqdm
+
+# Physics & Specialized Tools
+faiss-cpu
+pyvista
+wandb

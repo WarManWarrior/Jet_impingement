@@ -1,0 +1,52 @@
+Using device: cuda
+Found 98 train sims, 40 val sims.
+Pre-loading Graph Templates (HD 4, 5, 6)...
+  ✓ HD=4: 250,000 fine nodes, 3,000 latent nodes, 65 outlet nodes
+  ✓ HD=5: 250,000 fine nodes, 3,000 latent nodes, 57 outlet nodes
+  ✓ HD=6: 250,000 fine nodes, 3,000 latent nodes, 64 outlet nodes
+Initializing JetLatentGNN v3 (Physics-aware, peak-preserving)
+ -> Input Features  : 18
+ -> Hidden Dimension: 128
+Model parameters: 538,245
+[Loss]  Outlet BC target (Z-score of 0 Pa) = -1.0433
+[Loss]  mean_P_log=-0.0000, std_P_log=1.0000
+
+============================================================
+  INITIATING TRAINING — Z-score loss | Two-phase | Global node
+============================================================
+Epoch 001/150 Phase 1 [T+V+P] [Train]:   0%|                                                                                                                                             | 0/98 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\train.py", line 336, in <module>
+    pred = model(graph)
+           ^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\LatentGNN.py", line 120, in forward
+    h_latent = self.up_conv((h_fine, h_latent), edge_index_up, edge_attr_up)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch_geometric\nn\conv\gatv2_conv.py", line 325, in forward
+    alpha = self.edge_updater(edge_index, x=(x_l, x_r),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHE~1\AppData\Local\Temp\torch_geometric.nn.conv.gatv2_conv_GATv2Conv_edge_updater_lhpcqob5.py", line 176, in edge_updater
+    out = self.edge_update(
+          ^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch_geometric\nn\conv\gatv2_conv.py", line 368, in edge_update
+    x = F.leaky_relu(x, self.negative_slope)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch\nn\functional.py", line 1902, in leaky_relu
+    result = torch._C._nn.leaky_relu(input, negative_slope)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: CUDA error: device-side assert triggered
+CUDA kernel errors might be asynchronously reported at some other API call, so the stacktrace below might be incorrect.
+For debugging consider passing CUDA_LAUNCH_BLOCKING=1
+Compile with `TORCH_USE_CUDA_DSA` to enable device-side assertions.

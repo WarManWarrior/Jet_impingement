@@ -1,0 +1,357 @@
+Using device: cuda
+Found 98 train sims, 40 val sims.
+Pre-loading Graph Templates (HD 4, 5, 6)...
+  ✓ HD=4: 250,000 fine nodes, 500 latent nodes, 65 outlet nodes
+  ✓ HD=5: 250,000 fine nodes, 500 latent nodes, 57 outlet nodes
+  ✓ HD=6: 250,000 fine nodes, 500 latent nodes, 64 outlet nodes
+Initializing JetLatentGNN v2 (Parameter Node + strong global)
+ -> Input Features  : 16  (includes signed_dist_wall)
+ -> Hidden Dimension: 128
+Model parameters: 452,613
+[Loss]  Outlet BC target (Z-score of 0 Pa) = -1.0433
+[Loss]  mean_P_log=-0.0000, std_P_log=1.0000
+
+============================================================
+  INITIATING TRAINING — Z-score loss | Two-phase | Global node
+============================================================
+Epoch 001/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:39<00:00,  2.51it/s, T=15.742, P=1.974, Vx=1
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 001/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.23it/s]
+Epoch 001 | Phase 1 [T+V+P] | Train: 74.8999 | Val: 63.6854 | LR: 3.00e-04
+  Val → T:58.4891  P:1.6833  Vx:1.1055  Vy:1.1291  Vz:1.2782  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=63.6854)
+Epoch 002/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:37<00:00,  2.59it/s, T=34.978, P=1.830, Vx=1
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 002/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.31it/s]
+Epoch 002 | Phase 1 [T+V+P] | Train: 55.3754 | Val: 58.3755 | LR: 3.00e-04
+  Val → T:53.4238  P:1.6265  Vx:1.1097  Vy:1.1149  Vz:1.1006  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=58.3755)
+Epoch 003/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:38<00:00,  2.58it/s, T=61.442, P=1.244, Vx=0
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 003/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.71it/s]
+Epoch 003 | Phase 1 [T+V+P] | Train: 51.6830 | Val: 52.1376 | LR: 3.00e-04
+  Val → T:47.2394  P:1.5874  Vx:1.1094  Vy:1.1014  Vz:1.1000  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=52.1376)
+Epoch 004/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:37<00:00,  2.64it/s, T=11.641, P=1.793, Vx=0
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 004/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.19it/s]
+Epoch 004 | Phase 1 [T+V+P] | Train: 42.3401 | Val: 36.5063 | LR: 2.99e-04
+  Val → T:31.6321  P:1.5577  Vx:1.1063  Vy:1.0996  Vz:1.1106  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=36.5063)
+Epoch 005/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.76it/s, T=9.312, P=1.585, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 005/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.86it/s]
+Epoch 005 | Phase 1 [T+V+P] | Train: 26.6278 | Val: 20.0821 | LR: 2.99e-04
+  Val → T:15.2471  P:1.5169  Vx:1.1101  Vy:1.0937  Vz:1.1144  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=20.0821)
+Epoch 006/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.80it/s, T=22.617, P=1.454, Vx=0
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 006/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.01it/s]
+Epoch 006 | Phase 1 [T+V+P] | Train: 17.4569 | Val: 16.0770 | LR: 2.99e-04
+  Val → T:11.2583  P:1.5183  Vx:1.1120  Vy:1.0882  Vz:1.1002  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=16.0770)
+Epoch 007/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.82it/s, T=6.051, P=1.578, Vx=2.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 007/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.07it/s]
+Epoch 007 | Phase 1 [T+V+P] | Train: 15.0428 | Val: 13.7342 | LR: 2.98e-04
+  Val → T:8.9165  P:1.5345  Vx:1.1062  Vy:1.0795  Vz:1.0976  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=13.7342)
+Epoch 008/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.82it/s, T=2.930, P=1.819, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 008/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.94it/s]
+Epoch 008 | Phase 1 [T+V+P] | Train: 12.8893 | Val: 13.0587 | LR: 2.98e-04
+  Val → T:8.2397  P:1.5475  Vx:1.1067  Vy:1.0673  Vz:1.0975  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=13.0587)
+Epoch 009/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.80it/s, T=6.809, P=1.461, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 009/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.67it/s]
+Epoch 009 | Phase 1 [T+V+P] | Train: 10.8859 | Val: 11.2822 | LR: 2.97e-04
+  Val → T:6.4737  P:1.5481  Vx:1.1036  Vy:1.0606  Vz:1.0961  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=11.2822)
+Epoch 010/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.77it/s, T=3.457, P=1.662, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 010/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.47it/s]
+Epoch 010 | Phase 1 [T+V+P] | Train: 11.8614 | Val: 10.9508 | LR: 2.97e-04
+  Val → T:6.1571  P:1.5379  Vx:1.1038  Vy:1.0562  Vz:1.0957  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=10.9508)
+Epoch 011/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.70it/s, T=0.734, P=1.643, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 011/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:08<00:00,  4.77it/s]
+Epoch 011 | Phase 1 [T+V+P] | Train: 10.4582 | Val: 18.1169 | LR: 2.96e-04
+  Val → T:13.3384  P:1.5261  Vx:1.1029  Vy:1.0533  Vz:1.0962  BC:0.0000
+Epoch 012/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:38<00:00,  2.52it/s, T=1.862, P=1.349, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 012/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.04it/s]
+Epoch 012 | Phase 1 [T+V+P] | Train: 12.6372 | Val: 12.5885 | LR: 2.95e-04
+  Val → T:7.8307  P:1.5066  Vx:1.1034  Vy:1.0523  Vz:1.0955  BC:0.0000
+Epoch 013/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.87it/s, T=1.933, P=1.728, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 013/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.03it/s]
+Epoch 013 | Phase 1 [T+V+P] | Train: 9.3571 | Val: 11.3326 | LR: 2.94e-04
+  Val → T:6.6133  P:1.4709  Vx:1.1023  Vy:1.0516  Vz:1.0946  BC:0.0000
+Epoch 014/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=8.154, P=1.110, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 014/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.08it/s]
+Epoch 014 | Phase 1 [T+V+P] | Train: 8.7893 | Val: 9.2697 | LR: 2.94e-04
+  Val → T:4.6178  P:1.4054  Vx:1.1020  Vy:1.0496  Vz:1.0948  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=9.2697)
+Epoch 015/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=5.031, P=0.983, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 015/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.12it/s]
+Epoch 015 | Phase 1 [T+V+P] | Train: 8.4120 | Val: 8.7172 | LR: 2.93e-04
+  Val → T:4.1758  P:1.2993  Vx:1.1018  Vy:1.0446  Vz:1.0958  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=8.7172)
+Epoch 016/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=0.352, P=1.439, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 016/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.07it/s]
+Epoch 016 | Phase 1 [T+V+P] | Train: 8.3002 | Val: 8.0854 | LR: 2.92e-04
+  Val → T:3.6720  P:1.1842  Vx:1.1010  Vy:1.0331  Vz:1.0952  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=8.0854)
+Epoch 017/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=2.138, P=1.262, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 017/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.04it/s]
+Epoch 017 | Phase 1 [T+V+P] | Train: 7.6891 | Val: 8.6375 | LR: 2.91e-04
+  Val → T:4.1774  P:1.2176  Vx:1.1116  Vy:1.0266  Vz:1.1043  BC:0.0000
+Epoch 018/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.76it/s, T=5.103, P=1.101, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 018/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.02it/s]
+Epoch 018 | Phase 1 [T+V+P] | Train: 7.8065 | Val: 8.2729 | LR: 2.90e-04
+  Val → T:3.9887  P:1.0639  Vx:1.1024  Vy:1.0208  Vz:1.0971  BC:0.0000
+Epoch 019/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.85it/s, T=1.087, P=0.908, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 019/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.01it/s]
+Epoch 019 | Phase 1 [T+V+P] | Train: 7.3049 | Val: 7.8018 | LR: 2.88e-04
+  Val → T:3.5869  P:1.0103  Vx:1.1004  Vy:1.0100  Vz:1.0941  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=7.8018)
+Epoch 020/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.87it/s, T=10.880, P=0.756, Vx=0
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 020/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.97it/s]
+Epoch 020 | Phase 1 [T+V+P] | Train: 7.1320 | Val: 11.0988 | LR: 2.87e-04
+  Val → T:6.9685  P:0.9324  Vx:1.1004  Vy:1.0032  Vz:1.0943  BC:0.0000
+Epoch 021/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:37<00:00,  2.60it/s, T=3.055, P=0.861, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 021/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:08<00:00,  4.91it/s]
+Epoch 021 | Phase 1 [T+V+P] | Train: 8.2782 | Val: 8.8170 | LR: 2.86e-04
+  Val → T:4.7046  P:0.9161  Vx:1.1001  Vy:0.9993  Vz:1.0969  BC:0.0000
+Epoch 022/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.82it/s, T=6.173, P=0.977, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 022/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.64it/s]
+Epoch 022 | Phase 1 [T+V+P] | Train: 8.8839 | Val: 11.4952 | LR: 2.84e-04
+  Val → T:7.4026  P:0.9017  Vx:1.1010  Vy:0.9933  Vz:1.0966  BC:0.0000
+Epoch 023/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.69it/s, T=13.204, P=0.799, Vx=0
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 023/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.55it/s]
+Epoch 023 | Phase 1 [T+V+P] | Train: 8.3693 | Val: 7.7489 | LR: 2.83e-04
+  Val → T:3.5990  P:0.9579  Vx:1.1033  Vy:0.9906  Vz:1.0980  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=7.7489)
+Epoch 024/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.81it/s, T=4.073, P=0.763, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 024/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.07it/s]
+Epoch 024 | Phase 1 [T+V+P] | Train: 6.9978 | Val: 7.2197 | LR: 2.82e-04
+  Val → T:3.1121  P:0.9271  Vx:1.1001  Vy:0.9868  Vz:1.0936  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=7.2197)
+Epoch 025/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.76it/s, T=0.727, P=0.990, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 025/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.70it/s]
+Epoch 025 | Phase 1 [T+V+P] | Train: 6.6298 | Val: 7.5303 | LR: 2.80e-04
+  Val → T:3.5235  P:0.8369  Vx:1.1002  Vy:0.9761  Vz:1.0936  BC:0.0000
+Epoch 026/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.70it/s, T=6.216, P=0.723, Vx=2.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 026/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.72it/s]
+Epoch 026 | Phase 1 [T+V+P] | Train: 6.7532 | Val: 8.4018 | LR: 2.78e-04
+  Val → T:4.4405  P:0.7972  Vx:1.1012  Vy:0.9691  Vz:1.0938  BC:0.0000
+Epoch 027/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.77it/s, T=0.291, P=0.866, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 027/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.93it/s]
+Epoch 027 | Phase 1 [T+V+P] | Train: 8.0752 | Val: 7.8852 | LR: 2.77e-04
+  Val → T:3.9377  P:0.7885  Vx:1.1024  Vy:0.9621  Vz:1.0945  BC:0.0000
+Epoch 028/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.80it/s, T=0.840, P=0.673, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 028/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.75it/s]
+Epoch 028 | Phase 1 [T+V+P] | Train: 7.1406 | Val: 7.1640 | LR: 2.75e-04
+  Val → T:3.2590  P:0.7604  Vx:1.0996  Vy:0.9514  Vz:1.0935  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=7.1640)
+Epoch 029/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.82it/s, T=0.265, P=0.827, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 029/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.75it/s]
+Epoch 029 | Phase 1 [T+V+P] | Train: 6.5728 | Val: 7.7387 | LR: 2.73e-04
+  Val → T:3.8593  P:0.7411  Vx:1.0999  Vy:0.9448  Vz:1.0935  BC:0.0000
+Epoch 030/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.73it/s, T=2.018, P=0.801, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 030/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.02it/s]
+Epoch 030 | Phase 1 [T+V+P] | Train: 6.1787 | Val: 7.4224 | LR: 2.71e-04
+  Val → T:3.5861  P:0.7057  Vx:1.0998  Vy:0.9372  Vz:1.0935  BC:0.0000
+Epoch 031/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:37<00:00,  2.62it/s, T=3.736, P=0.694, Vx=3.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 031/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.81it/s]
+Epoch 031 | Phase 1 [T+V+P] | Train: 6.2585 | Val: 6.8026 | LR: 2.70e-04
+  Val → T:2.9838  P:0.6944  Vx:1.1026  Vy:0.9276  Vz:1.0942  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=6.8026)
+Epoch 032/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.65it/s, T=0.932, P=0.747, Vx=5.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 032/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.70it/s]
+Epoch 032 | Phase 1 [T+V+P] | Train: 6.4556 | Val: 6.7601 | LR: 2.68e-04
+  Val → T:2.9571  P:0.6846  Vx:1.1038  Vy:0.9206  Vz:1.0940  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=6.7601)
+Epoch 033/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:38<00:00,  2.56it/s, T=7.960, P=0.596, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 033/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.31it/s]
+Epoch 033 | Phase 1 [T+V+P] | Train: 7.5562 | Val: 8.2296 | LR: 2.66e-04
+  Val → T:4.4411  P:0.6565  Vx:1.1197  Vy:0.9135  Vz:1.0988  BC:0.0000
+Epoch 034/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.81it/s, T=2.826, P=0.691, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 034/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.69it/s]
+Epoch 034 | Phase 1 [T+V+P] | Train: 6.3668 | Val: 8.1592 | LR: 2.64e-04
+  Val → T:4.4308  P:0.6298  Vx:1.1003  Vy:0.9049  Vz:1.0935  BC:0.0000
+Epoch 035/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.83it/s, T=3.365, P=0.497, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 035/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.91it/s]
+Epoch 035 | Phase 1 [T+V+P] | Train: 7.1462 | Val: 6.4543 | LR: 2.62e-04
+  Val → T:2.7531  P:0.6090  Vx:1.0995  Vy:0.8997  Vz:1.0932  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=6.4543)
+Epoch 036/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.84it/s, T=3.188, P=0.506, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 036/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.03it/s]
+Epoch 036 | Phase 1 [T+V+P] | Train: 5.9837 | Val: 6.6626 | LR: 2.59e-04
+  Val → T:2.9780  P:0.5895  Vx:1.1002  Vy:0.9016  Vz:1.0933  BC:0.0000
+Epoch 037/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.85it/s, T=2.689, P=0.517, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 037/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.11it/s]
+Epoch 037 | Phase 1 [T+V+P] | Train: 5.9969 | Val: 6.0166 | LR: 2.57e-04
+  Val → T:2.3575  P:0.5710  Vx:1.1019  Vy:0.8931  Vz:1.0931  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=6.0166)
+Epoch 038/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=0.733, P=0.548, Vx=5.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 038/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.11it/s]
+Epoch 038 | Phase 1 [T+V+P] | Train: 6.0649 | Val: 6.1462 | LR: 2.55e-04
+  Val → T:2.5182  P:0.5480  Vx:1.0990  Vy:0.8882  Vz:1.0929  BC:0.0000
+Epoch 039/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=0.335, P=0.607, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 039/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.06it/s]
+Epoch 039 | Phase 1 [T+V+P] | Train: 5.8066 | Val: 6.1124 | LR: 2.53e-04
+  Val → T:2.5195  P:0.5203  Vx:1.0993  Vy:0.8797  Vz:1.0936  BC:0.0000
+Epoch 040/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.85it/s, T=0.515, P=0.630, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 040/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.08it/s]
+Epoch 040 | Phase 1 [T+V+P] | Train: 6.1673 | Val: 7.6663 | LR: 2.51e-04
+  Val → T:4.0723  P:0.5121  Vx:1.1008  Vy:0.8882  Vz:1.0929  BC:0.0000
+Epoch 041/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.84it/s, T=1.840, P=0.525, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 041/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.15it/s]
+Epoch 041 | Phase 1 [T+V+P] | Train: 6.1842 | Val: 5.7354 | LR: 2.48e-04
+  Val → T:2.1705  P:0.4985  Vx:1.0992  Vy:0.8742  Vz:1.0929  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=5.7354)
+Epoch 042/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=2.512, P=0.530, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 042/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.12it/s]
+Epoch 042 | Phase 1 [T+V+P] | Train: 6.4932 | Val: 8.2865 | LR: 2.46e-04
+  Val → T:4.7377  P:0.4877  Vx:1.0986  Vy:0.8695  Vz:1.0931  BC:0.0000
+Epoch 043/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.87it/s, T=2.951, P=0.398, Vx=2.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 043/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.09it/s]
+Epoch 043 | Phase 1 [T+V+P] | Train: 7.4868 | Val: 6.4327 | LR: 2.43e-04
+  Val → T:2.8947  P:0.4799  Vx:1.1001  Vy:0.8636  Vz:1.0944  BC:0.0000
+Epoch 044/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.85it/s, T=0.654, P=0.492, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 044/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.13it/s]
+Epoch 044 | Phase 1 [T+V+P] | Train: 5.3503 | Val: 8.8692 | LR: 2.41e-04
+  Val → T:5.2839  P:0.5286  Vx:1.0981  Vy:0.8659  Vz:1.0927  BC:0.0000
+Epoch 045/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.85it/s, T=2.604, P=0.547, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 045/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.18it/s]
+Epoch 045 | Phase 1 [T+V+P] | Train: 5.9293 | Val: 5.5790 | LR: 2.38e-04
+  Val → T:2.0303  P:0.5028  Vx:1.0994  Vy:0.8533  Vz:1.0933  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=5.5790)
+Epoch 046/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.85it/s, T=6.306, P=0.532, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 046/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.14it/s]
+Epoch 046 | Phase 1 [T+V+P] | Train: 5.1221 | Val: 5.9060 | LR: 2.36e-04
+  Val → T:2.3226  P:0.5451  Vx:1.1021  Vy:0.8431  Vz:1.0931  BC:0.0000
+Epoch 047/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=1.390, P=0.506, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 047/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.04it/s]
+Epoch 047 | Phase 1 [T+V+P] | Train: 5.7001 | Val: 5.7669 | LR: 2.33e-04
+  Val → T:2.2318  P:0.5023  Vx:1.0983  Vy:0.8405  Vz:1.0939  BC:0.0000
+Epoch 048/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.86it/s, T=2.969, P=0.567, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 048/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.06it/s]
+Epoch 048 | Phase 1 [T+V+P] | Train: 5.0982 | Val: 5.8857 | LR: 2.31e-04
+  Val → T:2.3267  P:0.5245  Vx:1.1004  Vy:0.8387  Vz:1.0954  BC:0.0000
+Epoch 049/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.84it/s, T=0.745, P=0.439, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 049/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.13it/s]
+Epoch 049 | Phase 1 [T+V+P] | Train: 4.9374 | Val: 6.9505 | LR: 2.28e-04
+  Val → T:3.4614  P:0.4753  Vx:1.0984  Vy:0.8217  Vz:1.0937  BC:0.0000
+Epoch 050/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.74it/s, T=2.859, P=0.491, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 050/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.41it/s]
+Epoch 050 | Phase 1 [T+V+P] | Train: 5.1595 | Val: 5.2245 | LR: 2.25e-04
+  Val → T:1.7874  P:0.4428  Vx:1.0978  Vy:0.8020  Vz:1.0944  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=5.2245)
+Epoch 051/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.72it/s, T=1.081, P=0.469, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 051/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.79it/s]
+Epoch 051 | Phase 1 [T+V+P] | Train: 5.1164 | Val: 8.5304 | LR: 2.23e-04
+  Val → T:5.0972  P:0.4455  Vx:1.0989  Vy:0.7942  Vz:1.0946  BC:0.0000
+Epoch 052/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.72it/s, T=0.707, P=0.524, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 052/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:07<00:00,  5.33it/s]
+Epoch 052 | Phase 1 [T+V+P] | Train: 5.6501 | Val: 5.1061 | LR: 2.20e-04
+  Val → T:1.7001  P:0.4351  Vx:1.0972  Vy:0.7802  Vz:1.0935  BC:0.0000
+Best model → D:\data\JET\best_jet_surrogate_model.pth  (val=5.1061)
+Epoch 053/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.67it/s, T=2.748, P=0.504, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 053/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  6.14it/s]
+Epoch 053 | Phase 1 [T+V+P] | Train: 5.8055 | Val: 6.1643 | LR: 2.17e-04
+  Val → T:2.6640  P:0.5290  Vx:1.0986  Vy:0.7795  Vz:1.0932  BC:0.0000
+Epoch 054/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:34<00:00,  2.87it/s, T=0.626, P=0.394, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 054/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.85it/s]
+Epoch 054 | Phase 1 [T+V+P] | Train: 5.4083 | Val: 5.8283 | LR: 2.14e-04
+  Val → T:2.4279  P:0.4310  Vx:1.0989  Vy:0.7775  Vz:1.0931  BC:0.0000
+Epoch 055/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:37<00:00,  2.60it/s, T=4.112, P=0.501, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 055/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.78it/s]
+Epoch 055 | Phase 1 [T+V+P] | Train: 5.1820 | Val: 7.0352 | LR: 2.11e-04
+  Val → T:3.5315  P:0.5142  Vx:1.0978  Vy:0.7985  Vz:1.0931  BC:0.0000
+Epoch 056/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.73it/s, T=0.708, P=0.539, Vx=1.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 056/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.79it/s]
+Epoch 056 | Phase 1 [T+V+P] | Train: 5.2312 | Val: 5.5777 | LR: 2.08e-04
+  Val → T:2.1799  P:0.4476  Vx:1.0981  Vy:0.7590  Vz:1.0931  BC:0.0000
+Epoch 057/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.72it/s, T=0.428, P=0.381, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 057/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.83it/s]
+Epoch 057 | Phase 1 [T+V+P] | Train: 5.6270 | Val: 7.7862 | LR: 2.06e-04
+  Val → T:4.4242  P:0.4235  Vx:1.0966  Vy:0.7488  Vz:1.0931  BC:0.0000
+Epoch 058/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:36<00:00,  2.68it/s, T=0.306, P=0.492, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 058/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.87it/s]
+Epoch 058 | Phase 1 [T+V+P] | Train: 7.4752 | Val: 5.3375 | LR: 2.03e-04
+  Val → T:1.9747  P:0.4246  Vx:1.0970  Vy:0.7483  Vz:1.0930  BC:0.0000
+Epoch 059/150 Phase 1 [T+V+P] [Train]: 100%|█| 98/98 [00:35<00:00,  2.75it/s, T=0.455, P=0.499, Vx=0.
+   ► VRAM: 0.19 GB  | NaN skips: 0
+Epoch 059/150 Phase 1 [T+V+P] [Val  ]: 100%|█████████████████████████| 40/40 [00:06<00:00,  5.79it/s]
+Epoch 059 | Phase 1 [T+V+P] | Train: 5.0989 | Val: 7.0876 | LR: 2.00e-04
+  Val → T:3.7227  P:0.4354  Vx:1.0975  Vy:0.7381  Vz:1.0940  BC:0.0000
+Epoch 060/150 Phase 1 [T+V+P] [Train]:  99%|▉| 97/98 [00:35<00:00,  2.75it/s, T=1.866, P=0.494, Vx=0.
+Traceback (most recent call last):
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\train.py", line 296, in <module>
+    pred = model(graph)
+           ^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch\nn\modules\module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch\nn\modules\module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\LatentGNN.py", line 99, in forward
+    g_summary = global_mean_pool(h_new, batch)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch_geometric\nn\pool\glob.py", line 63, in global_mean_pool
+    return scatter(x, batch, dim=dim, dim_size=size, reduce='mean')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Lib\site-packages\torch_geometric\utils\_scatter.py", line 48, in scatter
+    dim_size = int(index.max()) + 1 if index.numel() > 0 else 0
+               ^^^^^^^^^^^^^^^^
+KeyboardInterrupt

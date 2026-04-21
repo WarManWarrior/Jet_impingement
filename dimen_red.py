@@ -68,40 +68,110 @@ def extract_reference_coordinates(folder_path="D:/data/JET/**/*.h5", target_hd=4
     return sampled_coords
 
 
-def generate_latent_mesh(coords: np.ndarray, num_latent_nodes: int = 500):
-    print(f"Running FAISS K-Means: {len(coords):,} fine → {num_latent_nodes:,} latent nodes...")
+def generate_latent_mesh(coords: np.ndarray, num_latent_nodes: int = 3000):
+    print(f"Running FAISS K-Means (physics-aware): {len(coords):,} → {num_latent_nodes:,}")
+
+    # ─────────────────────────────────────────────
+    # 1. Normalize coordinates (improves clustering)
+    # ─────────────────────────────────────────────
+    coords_mean = coords.mean(axis=0)
+    coords_std  = coords.std(axis=0) + 1e-8
+    coords_norm = (coords - coords_mean) / coords_std
+
+    # ─────────────────────────────────────────────
+    # 2. Compute stagnation-aware weights
+    #    (higher weight near jet center)
+    # ─────────────────────────────────────────────
+    radius = np.sqrt(
+        (coords[:, 0] - GEOM['jet_center_x'])**2 +
+        (coords[:, 2] - GEOM['jet_center_z'])**2
+    )
+
+    weights = 1.0 / (radius + 1e-4)
+    weights /= weights.sum()
+
+    # ─────────────────────────────────────────────
+    # 3. Sample weighted subset for KMeans
+    # ─────────────────────────────────────────────
+    sample_size = min(200_000, len(coords))
+    rng = np.random.default_rng(42)
+
+    idx = rng.choice(
+        len(coords),
+        size=sample_size,
+        replace=False,
+        p=weights
+    )
+
+    coords_sampled = coords_norm[idx].astype(np.float32)
+
+    # ─────────────────────────────────────────────
+    # 4. Run FAISS KMeans
+    # ─────────────────────────────────────────────
     try:
-        kmeans = faiss.Kmeans(d=3, k=num_latent_nodes, niter=30, verbose=True, gpu=False)
+        kmeans = faiss.Kmeans(
+            d=3,
+            k=num_latent_nodes,
+            niter=30,
+            verbose=True,
+            gpu=False
+        )
     except Exception:
-        kmeans = faiss.Kmeans(d=3, k=num_latent_nodes, niter=30, verbose=True)
-    kmeans.train(coords)
-    latent_coords = kmeans.centroids
+        kmeans = faiss.Kmeans(
+            d=3,
+            k=num_latent_nodes,
+            niter=30,
+            verbose=True
+        )
+
+    kmeans.train(coords_sampled)
+
+    # ─────────────────────────────────────────────
+    # 5. De-normalize centroids back to real space
+    # ─────────────────────────────────────────────
+    latent_coords = kmeans.centroids * coords_std + coords_mean
+
     print(f"  Latent nodes: {latent_coords.shape}")
-    return latent_coords
+    return latent_coords.astype(np.float32)
 
 
 def build_bipartite_edges_faiss(fine_coords: np.ndarray, latent_coords: np.ndarray):
-    print("Building fine↔latent edges (k=3)...")
+    print("Building fine↔latent edges (k=8)...")
     index_latent = faiss.IndexFlatL2(3)
     index_latent.add(latent_coords)
 
-    sq_distances, latent_indices = index_latent.search(fine_coords, k=3)
+    sq_distances, latent_indices = index_latent.search(fine_coords, k=8)
     edge_distances = np.sqrt(np.clip(sq_distances.flatten(), 0, None))
-    fine_indices   = np.repeat(np.arange(len(fine_coords)), 3)
+    fine_indices = np.repeat(np.arange(len(fine_coords)), 8)
     edge_index_up  = torch.tensor(np.vstack((fine_indices, latent_indices.flatten())), dtype=torch.long)
-    edge_attr_up   = torch.tensor(edge_distances, dtype=torch.float).unsqueeze(1)
+    # Compute relative vectors
+    dx = fine_coords[fine_indices, 0] - latent_coords[latent_indices.flatten(), 0]
+    dy = fine_coords[fine_indices, 1] - latent_coords[latent_indices.flatten(), 1]
+    dz = fine_coords[fine_indices, 2] - latent_coords[latent_indices.flatten(), 2]
+
+    edge_attr_up = torch.tensor(
+        np.stack([edge_distances, dx, dy, dz], axis=1),
+        dtype=torch.float
+    )
 
     edge_index_down = torch.flip(edge_index_up, dims=[0])
     edge_attr_down  = edge_attr_up.clone()
 
-    print("Building latent↔latent edges (k=15)...")
-    sq_dist_latent, latent_neighbors = index_latent.search(latent_coords, k=16)
+    print("Building latent↔latent edges (k=32)...")
+    sq_dist_latent, latent_neighbors = index_latent.search(latent_coords, k=32)
     latent_neighbors = latent_neighbors[:, 1:]
     sq_dist_latent   = sq_dist_latent[:, 1:]
     latent_edge_dists = np.sqrt(np.clip(sq_dist_latent.flatten(), 0, None))
-    source_latent     = np.repeat(np.arange(len(latent_coords)), 15)
+    source_latent     = np.repeat(np.arange(len(latent_coords)), 31)
     edge_index_latent = torch.tensor(np.vstack((source_latent, latent_neighbors.flatten())), dtype=torch.long)
-    edge_attr_latent  = torch.tensor(latent_edge_dists, dtype=torch.float).unsqueeze(1)
+    dx_lat = latent_coords[source_latent, 0] - latent_coords[latent_neighbors.flatten(), 0]
+    dy_lat = latent_coords[source_latent, 1] - latent_coords[latent_neighbors.flatten(), 1]
+    dz_lat = latent_coords[source_latent, 2] - latent_coords[latent_neighbors.flatten(), 2]
+
+    edge_attr_latent = torch.tensor(
+        np.stack([latent_edge_dists, dx_lat, dy_lat, dz_lat], axis=1),
+        dtype=torch.float
+    )
 
     return edge_index_up, edge_attr_up, edge_index_down, edge_attr_down, edge_index_latent, edge_attr_latent
 
@@ -122,9 +192,9 @@ def build_heterodata(X_fine, Y_fine, A_fine, fine_coords, latent_coords,
     data['latent', 'interacts_with', 'latent'].edge_attr  = a_lat
     num_fine   = len(fine_coords)
     num_latent = len(latent_coords)
-    assert e_up.shape   == (2, num_fine * 3),    f"Up-edge wrong: {e_up.shape}"
-    assert e_down.shape == (2, num_fine * 3),    f"Down-edge wrong: {e_down.shape}"
-    assert e_lat.shape  == (2, num_latent * 15), f"Latent-edge wrong: {e_lat.shape}"
+    assert e_up.shape   == (2, num_fine * 8),    f"Up-edge wrong: {e_up.shape}"
+    assert e_down.shape == (2, num_fine * 8),    f"Down-edge wrong: {e_down.shape}"
+    assert e_lat.shape  == (2, num_latent * 31), f"Latent-edge wrong: {e_lat.shape}"
     return data
 
 
@@ -136,7 +206,7 @@ if __name__ == "__main__":
 
     DATA_DIR         = r"D:\data\JET"
     hd_ratios        = [4.0, 5.0, 6.0]
-    num_latent_nodes = 500   # POD showed 1-2 modes capture >99% variance
+    num_latent_nodes = 3000  # POD showed 1-2 modes capture >99% variance
 
     for target_hd in tqdm(hd_ratios, desc="Processing Geometries"):
         try:
@@ -155,7 +225,7 @@ if __name__ == "__main__":
             e_up, a_up, e_down, a_down, e_lat, a_lat = build_bipartite_edges_faiss(
                 fine_node_coords, latent_coords)
 
-            X_dummy = np.ones((len(fine_node_coords), 16), dtype=np.float32)  # 16 features
+            X_dummy = np.ones((len(fine_node_coords), 18), dtype=np.float32)  # 16 features
             Y_dummy = np.ones((len(fine_node_coords), 5),  dtype=np.float32)
             A_dummy = np.ones((len(fine_node_coords), 2),  dtype=np.float32)
             gc.collect()

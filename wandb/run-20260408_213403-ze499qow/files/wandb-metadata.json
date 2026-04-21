@@ -1,0 +1,17 @@
+{
+  "os": "Windows-10-10.0.26200-SP0",
+  "python": "CPython 3.11.6",
+  "startedAt": "2026-04-08T16:04:03.758476Z",
+  "program": "C:\\Users\\SIDDHESHWAR DUBEY\\Documents\\CODES\\Projects\\Jet_impingement\\Jet_impingement\\train.py",
+  "codePath": "train.py",
+  "codePathLocal": "train.py",
+  "git": {
+    "remote": "https://github.com/WarManWarrior/Jet_impingement.git",
+    "commit": "575dcc71c40e420c6de9e964b8db24aa5ff27820"
+  },
+  "email": "siddh200321@gmail.com",
+  "root": "C:\\Users\\SIDDHESHWAR DUBEY\\Documents\\CODES\\Projects\\Jet_impingement\\Jet_impingement",
+  "host": "ROG-Strix-G16",
+  "executable": "C:\\Users\\SIDDHESHWAR DUBEY\\Documents\\CODES\\Projects\\Jet_impingement\\Jet_impingement\\jet\\Scripts\\python.exe",
+  "writerId": "nq48iiishco00yb66gv406oggg4gas00"
+}

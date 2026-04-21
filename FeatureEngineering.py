@@ -80,8 +80,18 @@ RE_REGIME_THRESHOLD = 15_000
 VEL_MAX = 12.0   # FIX C: only need VEL_MAX now; normalization is vel/VEL_MAX
 
 # Feature layout: 3G + 7S + 1K + 5B = 16
-GLOBAL_COLS  = ['Log_Reynolds', 'Heat_Flux', 'Stanton_Proxy']
-SPATIAL_COLS = ['X', 'Y', 'Z', 'Radius', 'Dist_Outflow', 'Dist_Outlet', 'signed_dist_wall']
+GLOBAL_COLS  = [
+    'Log_Reynolds',
+    'Heat_Flux',
+    'Stanton_Proxy',
+    'temp_gradient_proxy'   # 🔥 added
+]
+SPATIAL_COLS = [
+    'X', 'Y', 'Z',
+    'Radius', 'inv_radius',   # 🔥 added
+    'Dist_Outflow', 'Dist_Outlet',
+    'signed_dist_wall'
+]
 SKEWED_COLS  = ['Y_norm']
 BINARY_COLS  = ['Stagnation_Flag', 'is_HD4', 'is_HD6', 'Re_regime', 'bc_velocity']
 ALL_INPUT_COLS = GLOBAL_COLS + SPATIAL_COLS + SKEWED_COLS + BINARY_COLS  # 16
@@ -221,7 +231,12 @@ def engineer_one_sim(file_path: str, t_max_global: float = 100.0) -> pd.DataFram
     us, vs, ws = vel_field[sel, 0], vel_field[sel, 1], vel_field[sel, 2]
 
     radius_full = np.sqrt((x - GEOM['jet_center_x'])**2 + (z - GEOM['jet_center_z'])**2)
-    radius      = radius_full[sel]
+    radius = radius_full[sel]
+    # 🔥 NEW: gradient proxy (now radius is defined)
+    temp_gradient_proxy = heat_flux / (radius + 1e-4)
+
+    # 🔥 NEW: inverse radius (makes peak easier to learn)
+    inv_radius = 1.0 / (radius + 1e-5)
 
     dist_outflow = np.minimum.reduce([xs, GEOM['domain_x_max'] - xs,
                                       zs, GEOM['domain_z_max'] - zs])
@@ -230,13 +245,18 @@ def engineer_one_sim(file_path: str, t_max_global: float = 100.0) -> pd.DataFram
                              for cx, cz in outlet_centers], axis=0)
 
     delta_bl = GEOM['D_m'] / np.sqrt(max(re_num, 1.0))
-    y_norm   = ys / (delta_bl + 1e-10)
+    # 🔥 Log scaling stabilizes boundary layer representation
+    y_norm = np.log1p(ys / (delta_bl + 1e-6))
 
     # FIX D: signed_dist_wall = distance from inlet (top), using corrected domain_y_max
     # 0 at inlet (y=domain_y_max), positive downward toward chip (y=0)
     signed_dist_wall = (GEOM['domain_y_max'] - ys).astype(np.float32)
 
-    stagnation_flag = (radius < GEOM['D_m']).astype(np.float32)
+    # 🔥 Normalize it
+    signed_dist_wall = signed_dist_wall / GEOM['domain_y_max']
+
+    # 🔥 Smooth Gaussian stagnation encoding
+    stagnation_flag = np.exp(- (radius / GEOM['D_m'])**2).astype(np.float32)
     is_HD4          = np.float32(hd == 4.0) * np.ones(len(xs), dtype=np.float32)
     is_HD6          = np.float32(hd == 6.0) * np.ones(len(xs), dtype=np.float32)
     re_regime       = (float(re_num) > RE_REGIME_THRESHOLD) * np.ones(len(xs), dtype=np.float32)
@@ -247,7 +267,9 @@ def engineer_one_sim(file_path: str, t_max_global: float = 100.0) -> pd.DataFram
     y_actual_max    = ys.max()
     inlet_node_mask = (ys > y_actual_max - 0.002) & (radius < GEOM['D_m'] / 2.0)
     vel_norm        = abs(vel) / VEL_MAX   # [0.25, 1.0] range
-    bc_velocity     = np.where(inlet_node_mask, vel_norm, 0.0).astype(np.float32)
+    # 🔥 smoother spatial decay instead of hard cutoff
+    bc_velocity = vel_norm * np.exp(-radius / GEOM['D_m'])
+    bc_velocity = bc_velocity.astype(np.float32)
 
     dT_ref_val = max(t_max_global - GEOM['T_inlet'], 1e-6)
     theta_norm = (ts - GEOM['T_inlet']) / dT_ref_val
@@ -270,23 +292,31 @@ def engineer_one_sim(file_path: str, t_max_global: float = 100.0) -> pd.DataFram
         'Log_Reynolds'    : np.log(max(re_num, 1.0)),
         'Heat_Flux'       : heat_flux,
         'Stanton_Proxy'   : q_star,
+        'temp_gradient_proxy': temp_gradient_proxy,   # 🔥 NEW
+
         'X': xs, 'Y': ys, 'Z': zs,
         'Radius'          : radius,
+        'inv_radius'      : inv_radius,              # 🔥 NEW
         'Dist_Outflow'    : dist_outflow,
         'Dist_Outlet'     : dist_outlet,
         'signed_dist_wall': signed_dist_wall,
+
         'Y_norm'          : y_norm,
+
         'Stagnation_Flag' : stagnation_flag,
         'is_HD4'          : is_HD4,
         'is_HD6'          : is_HD6,
         'Re_regime'       : re_regime,
         'bc_velocity'     : bc_velocity,
+
         'sim_id'          : os.path.basename(file_path),
+
         'Temperature'     : ts,
         'Pressure'        : ps,
         'U_vel'           : us,
         'V_vel'           : vs,
         'W_vel'           : ws,
+
         'Theta_norm'      : theta_norm,
         'Nu_local'        : nu_local,
     }), n_wall, n_inlet, n_hot
@@ -313,7 +343,7 @@ def extract_all(valid_files, t_max_global=None) -> pd.DataFrame:
         try:
             df_sim, nw, ni, nh = engineer_one_sim(fp, t_max_global=t_max_global)
             chunks.append(df_sim)
-            print(f"  {os.path.basename(fp):50s} wall={nw:,}  inlet={ni:,}  hot(>T+1)={nh:,}")
+            tqdm.write(f"{os.path.basename(fp)} | wall={nw:,} inlet={ni:,} hot={nh:,}")
         except Exception as e:
             print(f"[SKIP] {os.path.basename(fp)}: {e}")
         gc.collect()
@@ -370,7 +400,7 @@ def fit_and_transform(master: pd.DataFrame, save_dir: str):
     T_full = t_scaled.astype(np.float32)
     A_full = a_scaled.astype(np.float32)
 
-    assert X_full.shape[1] == 16, f"Expected 16 features, got {X_full.shape[1]}"
+    assert X_full.shape[1] == 18, f"Expected 16 features, got {X_full.shape[1]}"
 
     # Sampling audit
     wall_frac = (master['Y'] < 1e-4).mean()

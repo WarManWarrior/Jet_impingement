@@ -1,0 +1,9 @@
+2026-04-10 13:29:27,842 INFO    MainThread:30900 [wandb_setup.py:_flush():81] Current SDK version is 0.25.1
+2026-04-10 13:29:27,842 INFO    MainThread:30900 [wandb_setup.py:_flush():81] Configure stats pid to 30900
+2026-04-10 13:29:27,842 INFO    MainThread:30900 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-04-10 13:29:27,842 INFO    MainThread:30900 [wandb_init.py:setup_run_log_directory():717] Logging user logs to C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\wandb\run-20260410_132927-y9pr52df\logs\debug.log
+2026-04-10 13:29:27,842 INFO    MainThread:30900 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\wandb\run-20260410_132927-y9pr52df\logs\debug-internal.log
+2026-04-10 13:29:27,843 INFO    MainThread:30900 [wandb_init.py:init():844] calling init triggers
+2026-04-10 13:29:27,843 INFO    MainThread:30900 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'learning_rate': 0.0003, 'epochs': 150, 'batch_accumulation': 8, 'weight_decay': 0.0001, 'phase2_epoch': 80, 'pressure_boost': 3.0, 'bc_weight': 10.0, 'grad_clip': 1.0, 'device': 'cuda', '_wandb': {}}
+2026-04-10 13:29:27,843 INFO    MainThread:30900 [wandb_init.py:init():892] starting backend

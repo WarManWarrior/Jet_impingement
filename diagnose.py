@@ -21,7 +21,7 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 val_dir = Path(DATA_DIR) / "val_sims"
 val_files = sorted(val_dir.glob("*.pt"))
 val_path = val_files[0]      # ← change [0] here if needed
-print(f"🔍 Diagnosing validation file:\n{val_path.name}\n")
+print(f"Diagnosing validation file:\n{val_path.name}\n")
 
 # ─────────────────────────────────────────────────
 #  IMPORTS
@@ -40,7 +40,7 @@ from LatentGNN import JetLatentGNN   # your current v2 model
 hd_match = re.search(r'H(\d+)', str(val_path))
 if hd_match:
     hd_val = int(hd_match.group(1))
-    print(f"✅ Detected H/D = {hd_val}")
+    print(f"Detected H/D = {hd_val}")
 else:
     hd_val = 6
     print(f"⚠ No H/D found → defaulting to H/D = {hd_val}")
@@ -171,7 +171,7 @@ cloud["P_error (Pa)"]     = err_P
 cloud["VelMag_error"]     = err_Vmag
 cloud.save("diagnostic_comparison.vtp")
 
-print("\n✅ Files saved:")
+print("\nFiles saved:")
 print("   • diagnostic_wall_profiles.png")
 print("   • diagnostic_error_map.png")
 print("   • diagnostic_comparison.vtp   ← open in ParaView")

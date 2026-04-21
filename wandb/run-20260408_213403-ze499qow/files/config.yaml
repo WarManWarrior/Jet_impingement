@@ -1,0 +1,58 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            nq48iiishco00yb66gv406oggg4gas00:
+                codePath: train.py
+                codePathLocal: train.py
+                email: siddh200321@gmail.com
+                executable: C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\jet\Scripts\python.exe
+                git:
+                    commit: 575dcc71c40e420c6de9e964b8db24aa5ff27820
+                    remote: https://github.com/WarManWarrior/Jet_impingement.git
+                host: ROG-Strix-G16
+                os: Windows-10-10.0.26200-SP0
+                program: C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\train.py
+                python: CPython 3.11.6
+                root: C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement
+                startedAt: "2026-04-08T16:04:03.758476Z"
+                writerId: nq48iiishco00yb66gv406oggg4gas00
+        m: []
+        python_version: 3.11.6
+        t:
+            "1":
+                - 1
+                - 5
+                - 53
+                - 77
+            "2":
+                - 1
+                - 5
+                - 53
+                - 77
+            "3":
+                - 16
+            "4": 3.11.6
+            "5": 0.25.1
+            "8":
+                - 3
+            "12": 0.25.1
+            "13": windows-amd64
+batch_accumulation:
+    value: 8
+bc_weight:
+    value: 10
+device:
+    value: cuda
+epochs:
+    value: 150
+grad_clip:
+    value: 1
+learning_rate:
+    value: 0.0003
+phase2_epoch:
+    value: 80
+pressure_boost:
+    value: 3
+weight_decay:
+    value: 0.0001

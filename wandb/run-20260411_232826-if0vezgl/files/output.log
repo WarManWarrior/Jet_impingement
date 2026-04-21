@@ -1,0 +1,20 @@
+Found 98 train sims, 40 val sims.
+Pre-loading Graph Templates (HD 4, 5, 6)...
+  HD=4: 250,000 fine nodes, 3,000 latent nodes
+  HD=5: 250,000 fine nodes, 3,000 latent nodes
+  HD=6: 250,000 fine nodes, 3,000 latent nodes
+Initializing JetLatentGNN v3 (Physics-aware, peak-preserving)
+ -> Input Features  : 20
+ -> Hidden Dimension: 128
+Model parameters: 538,501  (in_features=20)
+
+============================================================
+  TRAINING — 250 epochs, in_features=20
+  Fixes: signed_dist | stag_weight×15 | vel_loss×3 | eta_min=5e-5
+============================================================
+Epoch 001/250 [Train]:   1%| | 1/98 [00:18<30:42, 18.99s/it, T=4.319, P=3.134, Vx=9.456, Vy
+Traceback (most recent call last):
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\train2.py", line 287, in <module>
+    total_train_loss += loss.item()
+                        ^^^^^^^^^^^
+KeyboardInterrupt

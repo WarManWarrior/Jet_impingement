@@ -1,0 +1,14 @@
+Using device: cuda
+  ✓ HD=4: 250,000 fine nodes...
+  ✓ HD=5: 250,000 fine nodes...
+  ✓ HD=6: 250,000 fine nodes...
+Initializing JetLatentGNN v3 (Physics-aware, peak-preserving)
+ -> Input Features  : 18
+ -> Hidden Dimension: 128
+Traceback (most recent call last):
+  File "C:\Users\SIDDHESHWAR DUBEY\Documents\CODES\Projects\Jet_impingement\Jet_impingement\train2.py", line 154, in <module>
+    random.shuffle(train_sim_files)
+  File "C:\Users\SIDDHESHWAR DUBEY\AppData\Local\Programs\Python\Python311\Lib\random.py", line 380, in shuffle
+    for i in reversed(range(1, len(x))):
+                               ^^^^^^
+TypeError: object of type 'ellipsis' has no len()
