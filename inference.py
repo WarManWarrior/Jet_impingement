@@ -47,8 +47,8 @@ from FeatureEngineering import (
 #  1. USER INPUTS
 # ─────────────────────────────────────────────────
 USER_HD       = 4.0
-USER_VELOCITY = 4.0
-USER_POWER    = 70.0
+USER_VELOCITY = 5.5
+USER_POWER    = 74.0
 
 DATA_DIR = r"D:\data\JET"
 DEVICE   = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -196,16 +196,32 @@ uvw_real  = scalers['vel'].inverse_transform(predictions_scaled[:, 2:5])
 # ─────────────────────────────────────────────────
 print("Enforcing boundary conditions...")
 
-# Inlet only: Vy is a hard physical constraint (known nozzle velocity).
-# Outlet velocities are NOT overridden — the model predicts them freely.
-# The previous code computed V_outlet = (A_inlet/A_outlet) * V_inlet / 2 = 2 * V_inlet
-# and wrote that onto outlet nodes, which prevented the model from learning
-# the real outlet flow structure.
+# 1. Inlet Override: Vy is a hard physical constraint
 uvw_real[inlet_node_mask, 0] = 0.0
 uvw_real[inlet_node_mask, 1] = -abs(USER_VELOCITY)
 uvw_real[inlet_node_mask, 2] = 0.0
 print(f"  ✓ Inlet : {inlet_node_mask.sum():,} nodes → Vy = {-abs(USER_VELOCITY):.2f} m/s")
-print("  ✓ Outlet: model predictions retained (no analytical override)")
+
+# 2. Outlet Override: Force velocity to be 2x the inlet velocity based on Area ratio
+target_outlet_speed = 2.0 * abs(USER_VELOCITY)
+outlet_tolerance = 0.002 # 2mm tolerance to catch boundary nodes
+
+# Identify left and right boundary nodes
+left_outlet_mask = (xs < outlet_tolerance)
+right_outlet_mask = (xs > domain_x_max - outlet_tolerance)
+
+# Force left outlet flow purely in the -X direction
+uvw_real[left_outlet_mask, 0] = -target_outlet_speed
+uvw_real[left_outlet_mask, 1] = 0.0
+uvw_real[left_outlet_mask, 2] = 0.0
+
+# Force right outlet flow purely in the +X direction
+uvw_real[right_outlet_mask, 0] = target_outlet_speed
+uvw_real[right_outlet_mask, 1] = 0.0
+uvw_real[right_outlet_mask, 2] = 0.0
+
+total_outlets = left_outlet_mask.sum() + right_outlet_mask.sum()
+print(f"  ✓ Outlet: {total_outlets:,} nodes overridden → Vx = ±{target_outlet_speed:.2f} m/s (2x inlet)")
 
 # ─────────────────────────────────────────────────
 #  6. SANITY CHECK

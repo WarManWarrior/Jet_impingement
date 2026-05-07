@@ -292,11 +292,11 @@ def engineer_one_sim(file_path: str, t_max_global: float = 100.0) -> pd.DataFram
         'Log_Reynolds'    : np.log(max(re_num, 1.0)),
         'Heat_Flux'       : heat_flux,
         'Stanton_Proxy'   : q_star,
-        'temp_gradient_proxy': temp_gradient_proxy,   # 🔥 NEW
+        'temp_gradient_proxy': temp_gradient_proxy,   
 
         'X': xs, 'Y': ys, 'Z': zs,
         'Radius'          : radius,
-        'inv_radius'      : inv_radius,              # 🔥 NEW
+        'inv_radius'      : inv_radius,             
         'Dist_Outflow'    : dist_outflow,
         'Dist_Outlet'     : dist_outlet,
         'signed_dist_wall': signed_dist_wall,

@@ -21,14 +21,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 """
 We need to split our EDA into two distinct physical perspectives:
 
-1. Macro-Physics (Global Trends): Looking at each of the 166 simulations as a single data point. How does changing the Reynolds number (velocity) or $H/D$ impact the absolute maximum temperature ($T_{max}$) and peak pressure?
+1. Macro-Physics (Global Trends): Looking at each of the simulations as a single data point. How does changing the Reynolds number (velocity) or $H/D$ impact the absolute maximum temperature ($T_{max}$) and peak pressure?
 
 2. Micro-Physics (Spatial Profiles): Looking inside the simulations. What does the temperature curve look like as the water spreads radially outward from the stagnation point along the heated chip?
 """
 
 
 # Set modern plotting style
-plt.style.use('dark_background')
+plt.style.use('default')
 sns.set_palette("husl")
 
 def extract_macro_physics(folder_path="D:/data/JET/**/*.h5"):
@@ -74,11 +74,11 @@ df_macro = extract_macro_physics()
 # GENERATE MACRO-PHYSICS PLOTS
 # ==========================================
 fig, axes = plt.subplots(1, 3, figsize=(20, 6))
-fig.suptitle('Jet Impingement Macro-Physics EDA (166 Simulations)', fontsize=16)
+fig.suptitle(f'Jet Impingement Macro-Physics EDA ({len(df_macro)} Simulations)', fontsize=16)
 
 # Plot 1: Cooling Performance (T_max vs Velocity colored by Power)
 scatter = axes[0].scatter(df_macro['Velocity'], df_macro['T_max'], 
-                          c=df_macro['Power'], cmap='inferno', s=100, alpha=0.8, edgecolor='w')
+                          c=df_macro['Power'], cmap='inferno', s=100, alpha=0.8, edgecolor='k')
 axes[0].set_title('Peak Temperature vs. Jet Velocity')
 axes[0].set_xlabel('Velocity Magnitude (m/s)')
 axes[0].set_ylabel('Max Temperature (°C)')
@@ -87,7 +87,7 @@ axes[0].grid(True, alpha=0.2)
 
 # Plot 2: Geometric Impact (H/D 4 vs H/D 5 Thermal Resistance)
 sns.boxplot(data=df_macro, x='H_D', y='Thermal_Resistance', ax=axes[1], palette='Set2')
-sns.swarmplot(data=df_macro, x='H_D', y='Thermal_Resistance', ax=axes[1], color='white', alpha=0.5)
+sns.swarmplot(data=df_macro, x='H_D', y='Thermal_Resistance', ax=axes[1], color='black', alpha=0.5)
 hd_vals = sorted(df_macro['H_D'].unique().astype(int).tolist())
 axes[1].set_title(f'Cooling Efficiency by H/D: {hd_vals}')
 axes[1].set_xlabel('H/D Ratio')
@@ -125,7 +125,7 @@ print(df_macro.groupby('H_D')[['T_max', 'P_max', 'Thermal_Resistance']].mean().r
 
 
 # Set modern plotting style
-plt.style.use('dark_background')
+plt.style.use('default')
 sns.set_palette("husl")
 
 def extract_advanced_physics_debug(folder_path="D:/data/JET/**/*.h5"):
@@ -283,7 +283,7 @@ How to interpret these results:
 
 
 # Set modern plotting style
-plt.style.use('dark_background')
+plt.style.use('default')
 sns.set_palette("husl")
 
 def run_isolated_volumetric_eda(target_hd=4.0, folder_path="D:/data/JET/**/*.h5"):
@@ -382,7 +382,7 @@ def run_isolated_volumetric_eda(target_hd=4.0, folder_path="D:/data/JET/**/*.h5"
 
     ax1 = fig.add_subplot(grid[0, 0])
     ax1.plot(cumulative_explained_variance, 'o-', color='#ff4b4b')
-    ax1.axhline(y=0.99, color='white', linestyle='--', alpha=0.5)
+    ax1.axhline(y=0.99, color='black', linestyle='--', alpha=0.5)
     ax1.set_title(f'POD Analysis (Complexity)\n{n_sims} sims, {n_points} nodes')
     ax1.set_xlabel('POD Modes')
     ax1.set_ylabel('Cumulative Variance')
@@ -414,7 +414,7 @@ def run_isolated_volumetric_eda(target_hd=4.0, folder_path="D:/data/JET/**/*.h5"
 
     plt.show()
 
-for hd in [4.0, 5.0, 6.0]:
+for hd in [4.0, 5.0, 6.0, 7.0, 8.0]:
     run_isolated_volumetric_eda(target_hd=hd)
 
 """
